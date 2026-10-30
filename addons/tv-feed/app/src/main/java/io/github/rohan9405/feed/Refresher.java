@@ -227,33 +227,32 @@ final class Refresher {
         showEarly(ctx, items, published.keySet(), probe);
         step(ctx, 10);
 
-        // TMDB: the header's new releases for every service installed here, and a top 10 for the ones that publish none.
+        // TMDB (JustWatch when TMDB fails): the header's new releases for every service installed here, and a top 10
+        // for the ones that publish none.
         // Only the drawer's apps: Home shows TMDB rows for no other. One thread per service: each asks TMDB dozens of
         // things, and one at a time that took minutes.
         Tmdb tmdb = new Tmdb(ctx);
-        if (tmdb.usable()) {
-            LocalDate today = LocalDate.now();
-            List<Item> local = new ArrayList<>(items);
-            ExecutorService services = Executors.newFixedThreadPool(Providers.TMDB.size());
-            List<Future<List<Item>>> found = new ArrayList<>();
-            for (Map.Entry<String, Integer> p : Providers.TMDB.entrySet()) {
-                String pkg = p.getKey();
-                if (!installed(pm, pkg) || !wanted(ctx, pkg)) continue;
-                found.add(services.submit(() -> fromService(tmdb, pkg, p.getValue(), today, local, published.containsKey(pkg))));
-            }
-            android.util.Log.i("Feed", "TMDB for " + found.size() + " drawer apps");
-            for (int n = 0; n < found.size(); n++) {
-                try {
-                    items.addAll(found.get(n).get());
-                    step(ctx, 10 + 60 * (n + 1) / found.size());
-                } catch (Exception e) {
-                    error.append("TMDB: ").append(e.getClass().getSimpleName()).append(". ");
-                }
-            }
-            services.shutdown();
-        } else {
-            error.append("No TMDB token: the header has no new releases. ");
+        JustWatch justWatch = new JustWatch(ctx);
+        if (!tmdb.usable()) error.append("No TMDB token: new releases from JustWatch, and no genre rows. ");
+        LocalDate today = LocalDate.now();
+        List<Item> local = new ArrayList<>(items);
+        ExecutorService services = Executors.newFixedThreadPool(Providers.TMDB.size());
+        List<Future<List<Item>>> found = new ArrayList<>();
+        for (Map.Entry<String, Integer> p : Providers.TMDB.entrySet()) {
+            String pkg = p.getKey();
+            if (!installed(pm, pkg) || !wanted(ctx, pkg)) continue;
+            found.add(services.submit(() -> fromService(tmdb, justWatch, pkg, p.getValue(), today, local, published.containsKey(pkg))));
         }
+        android.util.Log.i("Feed", "TMDB for " + found.size() + " drawer apps");
+        for (int n = 0; n < found.size(); n++) {
+            try {
+                items.addAll(found.get(n).get());
+                step(ctx, 10 + 60 * (n + 1) / found.size());
+            } catch (Exception e) {
+                error.append("TMDB: ").append(e.getClass().getSimpleName()).append(". ");
+            }
+        }
+        services.shutdown();
 
         // Ratings (the StreamRatings cache), then the header's ranking, then art.
         step(ctx, 70);
@@ -333,19 +332,30 @@ final class Refresher {
     }
 
     /** One service's TMDB rows: new releases and seasons for the header, its genre pool, and a top 10 if it publishes none. */
-    private static List<Item> fromService(Tmdb tmdb, String pkg, int provider, LocalDate today, List<Item> local,
-            boolean publishes) {
+    private static List<Item> fromService(Tmdb tmdb, JustWatch justWatch, String pkg, int provider, LocalDate today,
+            List<Item> local, boolean publishes) {
         List<Item> out = new ArrayList<>();
         // Premieres in the window, and series whose new season premiered in it; never a weekly episode of an old one.
-        List<Tmdb.Title> fresh = tmdb.newReleases(provider, today);
-        for (Tmdb.Title t : tmdb.newSeasons(provider, today)) {
+        List<Tmdb.Title> fresh = tmdb.usable() ? tmdb.newReleases(provider, today) : null;
+        List<Tmdb.Title> seasons = fresh == null ? null : tmdb.newSeasons(provider, today);
+        String source = "TMDB";
+        if (fresh == null || seasons == null) {
+            // TMDB unreachable or no token: what JustWatch says the service added, films and seasons together.
+            fresh = justWatch.newOn(provider, today, Providers.newDays(provider));
+            seasons = Collections.emptyList();
+            source = fresh == null ? "nothing (TMDB and JustWatch both failed)" : "JustWatch";
+            if (fresh == null) fresh = new ArrayList<>();
+        }
+        for (Tmdb.Title t : seasons) {
             boolean dup = false;
             for (Tmdb.Title f : fresh) dup |= f.id == t.id && f.kind.equals(t.kind);
             if (!dup) fresh.add(t);
         }
+        android.util.Log.i("Feed", "header " + pkg + " from " + source + ": " + fresh.size());
         for (Tmdb.Title t : fresh) {
             if (Pick.recentEnough(t.released, t.season, today)) out.add(fromTmdb(t, pkg, Item.HERO, 0));
         }
+        if (!tmdb.usable()) return out;   // the genre pool and the popular top 10 are TMDB's alone
         for (Tmdb.Title t : tmdb.genrePool(provider, POOL_PER_GENRE)) {
             if (!hasTitle(local, pkg, t.name) && !hasTitle(out, pkg, t.name)) out.add(fromTmdb(t, pkg, Item.POOL, 0));
         }

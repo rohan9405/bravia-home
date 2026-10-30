@@ -36,6 +36,8 @@ screensaver stays.
 - Ratings kept on the TV by release age: 3 days for titles from the last 3 months, 5 days up to a year and for
   series still airing, 15 days up to five years, 30 beyond; misses are retried after 5 days.
 - New releases, popular titles and genre pools from TMDB, for India (`watch_region=IN`), for the drawer's apps only.
+  When TMDB cannot be reached or has no token, the header's new releases come from JustWatch instead: what each
+  app added in India, day by day.
 - Genre and type from OMDb or TMDB; paired genres ("Action & Adventure") merged into one name.
 
 **TV clean-up**
@@ -49,6 +51,7 @@ screensaver stays.
 ```
  streaming apps ──(Watch Next, preview channels)──┐
  TMDB (new releases, popular, genres) ────────────┤
+ JustWatch (new releases, when TMDB fails) ───────┤
  StreamRatings shared cache → OMDb (ratings) ─────┤
                                                   ▼
                                 Feed add-on (io.github.rohan9405.feed)
@@ -146,5 +149,5 @@ adb shell am start -n io.github.rohan9405.feed/.FeedActivity --ez demo true
 
 Built on [CleanYourTV](https://github.com/Gathin23/cleanyourtv) by Gathin23 and its contributors: the launcher this
 Home is built into, the debloat list and tools, and their safety checks. MIT licence, as the original. Ratings via
-OMDb and the StreamRatings cache; titles, artwork and genres via TMDB. This product uses the TMDB API but is not
+OMDb and the StreamRatings cache; titles, artwork and genres via TMDB, and via JustWatch when TMDB is unavailable. This product uses the TMDB API but is not
 endorsed or certified by TMDB.

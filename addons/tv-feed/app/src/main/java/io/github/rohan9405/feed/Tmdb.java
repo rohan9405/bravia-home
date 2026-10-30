@@ -79,15 +79,19 @@ final class Tmdb {
      * New on the service in the last {@value #NEW_DAYS} days: series that premiered, films that premiered, and films
      * that came out digitally in India. A digital release carries its streaming date, not when the film first came
      * out (Baar Baar Dekho, 2016, reached Netflix in October 2026), so each film's original date is looked up and
-     * kept: the caller decides from it whether the film is recent.
+     * kept: the caller decides from it whether the film is recent. Null when TMDB could not be reached.
      */
     List<Title> newReleases(int provider, LocalDate today) {
         String from = today.minusDays(Providers.newDays(provider)).toString(), to = today.toString();
+        JSONObject series = discover("tv", provider, LIST_MS, "first_air_date.gte", from, "first_air_date.lte", to);
+        JSONObject films = discover("movie", provider, LIST_MS, "primary_release_date.gte", from, "primary_release_date.lte", to);
+        JSONObject digital = discover("movie", provider, LIST_MS, "release_date.gte", from, "release_date.lte", to,
+                "region", Providers.REGION, "with_release_type", "4|6");
+        if (series == null || films == null || digital == null) return null;   // TMDB did not answer: not "nothing new"
         List<Title> out = new ArrayList<>();
-        add(out, discover("tv", provider, LIST_MS, "first_air_date.gte", from, "first_air_date.lte", to), "tv");
-        add(out, discover("movie", provider, LIST_MS, "primary_release_date.gte", from, "primary_release_date.lte", to), "movie");
-        add(out, discover("movie", provider, LIST_MS, "release_date.gte", from, "release_date.lte", to,
-                "region", Providers.REGION, "with_release_type", "4|6"), "movie");
+        add(out, series, "tv");
+        add(out, films, "movie");
+        add(out, digital, "movie");
         List<Title> titles = dedupe(out);
         for (Title t : titles) {
             if (!"movie".equals(t.kind)) continue;
@@ -107,8 +111,10 @@ final class Tmdb {
      */
     List<Title> newSeasons(int provider, LocalDate today) {
         LocalDate from = today.minusDays(Providers.newDays(provider));
+        JSONObject page = discover("tv", provider, LIST_MS, "air_date.gte", from.toString(), "air_date.lte", today.toString());
+        if (page == null) return null;   // TMDB did not answer
         List<Title> airing = new ArrayList<>();
-        add(airing, discover("tv", provider, LIST_MS, "air_date.gte", from.toString(), "air_date.lte", today.toString()), "tv");
+        add(airing, page, "tv");
         List<Title> out = new ArrayList<>();
         for (int i = 0; i < Math.min(20, airing.size()); i++) {
             Title t = airing.get(i);
