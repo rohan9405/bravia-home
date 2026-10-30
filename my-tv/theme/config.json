@@ -1,0 +1,24 @@
+{
+  "dock_apps": [
+    "com.netflix.ninja",
+    "com.google.android.youtube.tv",
+    "com.amazon.amazonvideo.livingroom",
+    "in.startv.hotstar",
+    "com.sonyliv",
+    "com.graymatrix.did"
+  ],
+  "columns": 6,
+  "fill_dock": false,
+  "feed_package": "io.github.rohan9405.feed",
+  "module_cards": true,
+  "background_color": "#090C14",
+  "wallpaper": false,
+  "cinematic_home": false,
+  "ambient_glow": false,
+  "dock_glass": true,
+  "icon_only_buttons": true,
+  "focus_overshoot": false,
+  "advanced_effects": true,
+  "show_greeting": false,
+  "icon_only_inputs": true
+}

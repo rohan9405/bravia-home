@@ -1,0 +1,38 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'io.github.rohan9405.feed'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'io.github.rohan9405.feed'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
+            // Signed with the same debug key as the launcher: the provider only answers apps with this signature.
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // Test only (never in the APK): plain JVM tests, src/test.
+    testImplementation 'junit:junit:4.13.2'
+    // org.json is Android's own at runtime; the JVM tests need a real one to parse the shared cache's answers.
+    testImplementation 'org.json:json:20231013'
+}

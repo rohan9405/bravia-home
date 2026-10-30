@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- feed_package (FeedHome): Netflix's N, for the small app marks (the header, tabs and tile badges); its app icon on
+     Google TV is the wide wordmark, unreadable at that size. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp"
+    android:viewportWidth="150" android:viewportHeight="150">
+    <path android:fillColor="#FF141414" android:pathData="M0,0h150v150h-150z" />
+    <path android:fillColor="#FFB1060F" android:pathData="M45,18h20v114h-20z" />
+    <path android:fillColor="#FFB1060F" android:pathData="M85,18h20v114h-20z" />
+    <path android:fillColor="#FFE50914" android:pathData="M45,18h20l40,114h-20z" />
+</vector>

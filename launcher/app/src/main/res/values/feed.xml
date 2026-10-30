@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- feed_package (FeedHome): English only for now, so not translated. -->
+<resources>
+    <string name="feed_imdb" translatable="false">IMDb</string>
+    <string name="feed_continue" translatable="false">Continue watching</string>
+    <string name="feed_top10" translatable="false">Top 10</string>
+    <string name="feed_apps" translatable="false">Apps</string>
+    <string name="feed_open" translatable="false">Open</string>
+    <string name="feed_move" translatable="false">Move</string>
+    <string name="feed_remove" translatable="false">Remove from favourites</string>
+    <string name="feed_add" translatable="false">Add to favourites</string>
+    <string name="feed_remove_continue" translatable="false">Remove from Continue watching</string>
+    <string name="feed_app_info" translatable="false">App info</string>
+    <string name="feed_move_hint" translatable="false">Left and right to move, OK to put it down</string>
+    <string name="feed_watch_on" translatable="false">▶  Watch on %1$s</string>
+    <string name="feed_by_genre" translatable="false">By genre</string>
+    <string name="feed_series" translatable="false">TV Show</string>
+    <string name="feed_movie" translatable="false">Movie</string>
+    <string name="bluetooth" translatable="false">Bluetooth</string>
+    <string name="feed_accessories" translatable="false">Remotes &amp; Accessories</string>
+    <!-- Under the date: the Feed add-on's refresh. -->
+    <string name="feed_refreshing">Refreshing · %1$d%%</string>
+</resources>
