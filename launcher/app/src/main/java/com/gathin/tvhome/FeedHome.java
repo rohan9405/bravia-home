@@ -103,7 +103,10 @@ final class FeedHome {
     private final LinearLayout content;
     private final LinearLayout heroBlock;
     private final ImageView heroLogo;
-    private final TextView heroKicker, heroTitle, heroMeta, heroPlot, heroAction;
+    private final TextView heroKicker, heroTitle, heroMeta, heroAction, heroMore;
+    /** The header's two buttons, shown while it has focus; which one Left and Right are on (0 Watch, 1 Read more). */
+    private final LinearLayout heroButtons;
+    private int heroButton;
     private final LinearLayout heroTag;
     private final LinearLayout heroDots;
     private final LinearLayout drawerBand;
@@ -231,24 +234,28 @@ final class FeedHome {
         LinearLayout.LayoutParams mrlp = wrap();
         mrlp.topMargin = dp(12);
         heroBlock.addView(metaRow, mrlp);
-        heroPlot = text(15, 0xB3FFFFFF, regular);
-        heroPlot.setMaxLines(2);
-        heroPlot.setEllipsize(TextUtils.TruncateAt.END);
-        heroPlot.setLineSpacing(dp(3), 1f);
-        LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(dp(520), ViewGroup.LayoutParams.WRAP_CONTENT);
-        plp.topMargin = dp(10);
-        heroBlock.addView(heroPlot, plp);
+        // The plot is behind Read more: the header keeps to the title, its rating and its genres.
+        heroButtons = row();
+        heroButtons.setVisibility(View.GONE);
         heroAction = text(14, 0xFF0B0D12, medium);
-        heroAction.setBackground(rounded(0xF2FFFFFF, dp(18)));
         heroAction.setPadding(dp(16), dp(7), dp(18), dp(7));
-        heroAction.setVisibility(View.GONE);
+        heroButtons.addView(heroAction, wrap());
+        heroMore = text(14, Color.WHITE, medium);
+        heroMore.setText(R.string.feed_read_more);
+        heroMore.setPadding(dp(16), dp(7), dp(16), dp(7));
+        LinearLayout.LayoutParams mbl = wrap();
+        mbl.leftMargin = dp(10);
+        heroButtons.addView(heroMore, mbl);
         LinearLayout.LayoutParams alp = wrap();
-        alp.topMargin = dp(14);
-        heroBlock.addView(heroAction, alp);
-        // The header is a carousel: Left and Right turn it (round and round), OK opens the title, Down goes to the drawer.
+        alp.topMargin = dp(16);
+        heroBlock.addView(heroButtons, alp);
+        // The header is a carousel with two buttons: Left and Right move between Watch and Read more, and past either
+        // one turn the carousel (round and round); OK presses the button, Down goes to the drawer.
         heroBlock.setFocusable(true);
         heroBlock.setOnFocusChangeListener((v, has) -> {
-            heroAction.setVisibility(has ? View.VISIBLE : View.GONE);
+            heroButton = 0;
+            paintHeroButtons();
+            heroButtons.setVisibility(has ? View.VISIBLE : View.GONE);
             handler.removeCallbacks(turn);
             if (!has && heroes.size() > 1) handler.postDelayed(turn, TURN_MS);
             if (has) scroll.smoothScrollTo(0, 0);
@@ -1155,8 +1162,18 @@ final class FeedHome {
         if (!genres.isEmpty()) meta.add(genres);
         if (!e.subtitle.isEmpty()) meta.add(e.subtitle);
         heroMeta.setText(TextUtils.join("  ·  ", meta));
-        heroPlot.setText(e.overview);
-        heroPlot.setVisibility(e.overview.isEmpty() ? View.GONE : View.VISIBLE);
+    }
+
+    /** The button Left and Right are on is white; the other is glass. */
+    private void paintHeroButtons() {
+        TextView[] buttons = {heroAction, heroMore};
+        for (int i = 0; i < buttons.length; i++) {
+            boolean on = i == heroButton;
+            GradientDrawable bg = rounded(on ? 0xF2FFFFFF : 0x29FFFFFF, dp(18));
+            if (!on) bg.setStroke(Math.max(1, dp(1) / 2), 0x40FFFFFF);
+            buttons[i].setBackground(bg);
+            buttons[i].setTextColor(on ? 0xFF0B0D12 : Color.WHITE);
+        }
     }
 
     private void showBackdrop(String source, Bitmap b) {
@@ -1232,10 +1249,18 @@ final class FeedHome {
         if (e.getAction() != KeyEvent.ACTION_DOWN) return false;
         switch (key) {
             case KeyEvent.KEYCODE_DPAD_LEFT:
-                stepHero(-1);
+                if (heroButton == 1) heroButton = 0;
+                else stepHero(-1);
+                paintHeroButtons();
                 return true;
             case KeyEvent.KEYCODE_DPAD_RIGHT:
-                stepHero(1);
+                if (heroButton == 0) {
+                    heroButton = 1;
+                } else {
+                    heroButton = 0;
+                    stepHero(1);
+                }
+                paintHeroButtons();
                 return true;
             case KeyEvent.KEYCODE_DPAD_UP:
                 host.onUp();
@@ -1247,7 +1272,8 @@ final class FeedHome {
             case KeyEvent.KEYCODE_ENTER:
                 if (heroTurn >= 0 && heroTurn < heroes.size()) {
                     Feed.Entry h = heroes.get(heroTurn);
-                    if (!Feed.open(act, h)) Toast.makeText(act, act.getString(R.string.cant_open, h.title), Toast.LENGTH_SHORT).show();
+                    if (heroButton == 1) showDetails(h);
+                    else if (!Feed.open(act, h)) Toast.makeText(act, act.getString(R.string.cant_open, h.title), Toast.LENGTH_SHORT).show();
                 }
                 return true;
             default:
@@ -1384,6 +1410,226 @@ final class FeedHome {
         right.setCornerRadii(new float[] {0, 0, r, r, r, r, 0, 0});
         value.setBackground(right);
         into.addView(value, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, h));
+    }
+
+    /**
+     * Read more: the title's plot, cast, crew and facts over Home, with Watch and Close (Back closes too). What Home
+     * already has shows at once; the cast and the rest arrive from the add-on, which asks TMDB the first time.
+     */
+    private void showDetails(Feed.Entry e) {
+        Dialog dialog = new Dialog(act);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        LinearLayout box = column();
+        box.setPadding(dp(26), dp(24), dp(26), dp(20));
+        GradientDrawable bg = rounded(0xF5171A22, dp(22));
+        bg.setStroke(Math.max(1, dp(1) / 2), 0x26FFFFFF);
+        box.setBackground(bg);
+
+        // Art beside the app, the title and the facts line.
+        LinearLayout top = row();
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        box.addView(top, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        ImageView art = new ImageView(act);
+        art.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        art.setClipToOutline(true);
+        art.setBackground(rounded(0x1AFFFFFF, dp(12)));
+        top.addView(art, new LinearLayout.LayoutParams(dp(208), dp(117)));
+        String source = !e.backdrop.isEmpty() ? e.backdrop : e.poster;
+        if (!source.isEmpty()) feed.loadArt(source, dp(208) * 2, art::setImageBitmap);
+        LinearLayout head = column();
+        LinearLayout.LayoutParams hlp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        hlp.leftMargin = dp(20);
+        top.addView(head, hlp);
+        App a = apps.get(e.pkg);
+        if (a != null) {
+            LinearLayout kicker = row();
+            kicker.setGravity(Gravity.CENTER_VERTICAL);
+            ImageView logo = new ImageView(act);
+            logo.setImageDrawable(a.icon);
+            logo.setClipToOutline(true);
+            logo.setBackground(rounded(0x00000000, dp(5)));
+            kicker.addView(logo, new LinearLayout.LayoutParams(dp(22), dp(22)));
+            TextView name = text(12, 0xD9FFFFFF, medium);
+            name.setText(a.label);
+            name.setAllCaps(true);
+            name.setLetterSpacing(0.16f);
+            LinearLayout.LayoutParams nlp = wrap();
+            nlp.leftMargin = dp(8);
+            kicker.addView(name, nlp);
+            head.addView(kicker, wrap());
+        }
+        TextView title = text(26, Color.WHITE, light);
+        title.setText(e.title);
+        title.setMaxLines(2);
+        title.setEllipsize(TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams tlp = wrap();
+        tlp.topMargin = dp(8);
+        head.addView(title, tlp);
+        LinearLayout metaRow = row();
+        metaRow.setGravity(Gravity.CENTER_VERTICAL);
+        if (!e.rating.isEmpty()) imdbTag(metaRow, e.rating, true);
+        TextView meta = text(13, 0xCCFFFFFF, regular);
+        LinearLayout.LayoutParams mlp = wrap();
+        mlp.leftMargin = e.rating.isEmpty() ? 0 : dp(10);
+        metaRow.addView(meta, mlp);
+        LinearLayout.LayoutParams mrl = wrap();
+        mrl.topMargin = dp(10);
+        head.addView(metaRow, mrl);
+        meta.setText(detailsMeta(e, null));
+
+        // The plot, then the people and the facts as they arrive.
+        TextView tagline = text(14, 0x99FFFFFF, Typeface.create(regular, Typeface.ITALIC));
+        tagline.setVisibility(View.GONE);
+        LinearLayout.LayoutParams glp = wrap();
+        glp.topMargin = dp(18);
+        box.addView(tagline, glp);
+        TextView plot = text(15, 0xE6FFFFFF, regular);
+        plot.setText(e.overview);
+        plot.setMaxLines(6);
+        plot.setEllipsize(TextUtils.TruncateAt.END);
+        plot.setLineSpacing(dp(3), 1f);
+        plot.setVisibility(e.overview.isEmpty() ? View.GONE : View.VISIBLE);
+        LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        plp.topMargin = dp(12);
+        box.addView(plot, plp);
+        LinearLayout facts = column();
+        LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        flp.topMargin = dp(14);
+        box.addView(facts, flp);
+        if (!e.tmdb.isEmpty()) {
+            TextView loading = text(13, 0x80FFFFFF, regular);
+            loading.setText(R.string.feed_loading_details);
+            facts.addView(loading, wrap());
+        }
+
+        // Watch and Close.
+        LinearLayout buttons = row();
+        LinearLayout.LayoutParams blp = wrap();
+        blp.topMargin = dp(20);
+        box.addView(buttons, blp);
+        String app = a == null ? "" : a.label;
+        TextView watch = detailsButton(app.isEmpty() ? act.getString(R.string.feed_open) : act.getString(R.string.feed_watch_on, app));
+        watch.setOnClickListener(v -> {
+            dialog.dismiss();
+            if (!Feed.open(act, e)) Toast.makeText(act, act.getString(R.string.cant_open, e.title), Toast.LENGTH_SHORT).show();
+        });
+        buttons.addView(watch, wrap());
+        TextView close = detailsButton(act.getString(R.string.feed_close));
+        close.setOnClickListener(v -> dialog.dismiss());
+        LinearLayout.LayoutParams clp = wrap();
+        clp.leftMargin = dp(10);
+        buttons.addView(close, clp);
+
+        dialog.setContentView(box, new ViewGroup.LayoutParams(dp(760), ViewGroup.LayoutParams.WRAP_CONTENT));
+        if (dialog.getWindow() != null) dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        dialog.show();
+        watch.requestFocus();
+
+        if (e.tmdb.isEmpty()) return;   // a YouTube video: its description is all there is
+        feed.details(e.tmdb, d -> {
+            facts.removeAllViews();
+            if (d == null) {
+                TextView none = text(13, 0x80FFFFFF, regular);
+                none.setText(R.string.feed_no_details);
+                facts.addView(none, wrap());
+                return;
+            }
+            meta.setText(detailsMeta(e, d));
+            String tag = d.getOrDefault("tagline", "");
+            tagline.setText(tag);
+            tagline.setVisibility(tag.isEmpty() ? View.GONE : View.VISIBLE);
+            String overview = d.getOrDefault("overview", "");
+            if (!overview.isEmpty()) {
+                plot.setText(overview);
+                plot.setVisibility(View.VISIBLE);
+            }
+            fact(facts, R.string.feed_starring, d.get("cast"));
+            String directors = d.getOrDefault("directors", "");
+            fact(facts, directors.contains(",") ? R.string.feed_directors : R.string.feed_director, directors);
+            fact(facts, R.string.feed_created_by, d.get("creators"));
+            fact(facts, R.string.feed_seasons_label, seasonsLine(d));
+            fact(facts, R.string.feed_language, d.get("language"));
+            fact(facts, R.string.feed_released, longDate(d.get("released")));
+            fact(facts, R.string.feed_status, d.get("status"));
+        });
+    }
+
+    /** Year · length (or seasons) · age rating · genres · season: what Home has, then what the add-on adds. */
+    private String detailsMeta(Feed.Entry e, Map<String, String> d) {
+        List<String> meta = new ArrayList<>();
+        if (!e.year.isEmpty()) meta.add(e.year);
+        if (d != null) {
+            int runtime = number(d.get("runtime")), seasons = number(d.get("seasons"));
+            if (runtime > 0) meta.add(runtime >= 60 ? act.getString(R.string.feed_runtime, runtime / 60, runtime % 60)
+                    : act.getString(R.string.feed_minutes, runtime));
+            else if (seasons > 0) meta.add(act.getResources().getQuantityString(R.plurals.feed_seasons, seasons, seasons));
+            String rating = d.getOrDefault("certification", "");
+            if (!rating.isEmpty()) meta.add(rating);
+        }
+        String genres = genreNames(e.genre);
+        if (!genres.isEmpty()) meta.add(genres);
+        if (!e.subtitle.isEmpty()) meta.add(e.subtitle);
+        return TextUtils.join("  ·  ", meta);
+    }
+
+    /** "2 seasons · 16 episodes · about 42 min each", or empty for a film. */
+    private String seasonsLine(Map<String, String> d) {
+        int seasons = number(d.get("seasons")), episodes = number(d.get("episodes")), each = number(d.get("episode_runtime"));
+        List<String> parts = new ArrayList<>();
+        if (seasons > 0) parts.add(act.getResources().getQuantityString(R.plurals.feed_seasons, seasons, seasons));
+        if (episodes > 0) parts.add(act.getResources().getQuantityString(R.plurals.feed_episodes, episodes, episodes));
+        if (each > 0) parts.add(act.getString(R.string.feed_episode_length, each));
+        return TextUtils.join("  ·  ", parts);
+    }
+
+    /** "13 May 2026" from "2026-05-13"; empty when there is no date. */
+    private static String longDate(String iso) {
+        try {
+            return java.time.LocalDate.parse(iso).format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy"));
+        } catch (RuntimeException e) {
+            return "";
+        }
+    }
+
+    private static int number(String s) {
+        try {
+            return s == null ? 0 : Integer.parseInt(s.trim());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    /** One "Starring   Name, Name" line under the plot; nothing when the value is empty. */
+    private void fact(LinearLayout into, int label, String value) {
+        if (value == null || value.isEmpty()) return;
+        LinearLayout line = row();
+        TextView l = text(13, 0x80FFFFFF, regular);
+        l.setText(label);
+        line.addView(l, new LinearLayout.LayoutParams(dp(110), ViewGroup.LayoutParams.WRAP_CONTENT));
+        TextView v = text(13, 0xE6FFFFFF, regular);
+        v.setText(value);
+        v.setMaxLines(2);
+        v.setEllipsize(TextUtils.TruncateAt.END);
+        line.addView(v, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        if (into.getChildCount() > 0) lp.topMargin = dp(6);
+        into.addView(line, lp);
+    }
+
+    /** A pill like the header's: white with dark text when focused, glass otherwise. */
+    private TextView detailsButton(String label) {
+        TextView b = text(14, Color.WHITE, medium);
+        b.setText(label);
+        b.setFocusable(true);
+        b.setPadding(dp(18), dp(8), dp(18), dp(8));
+        b.setOnFocusChangeListener((v, has) -> {
+            GradientDrawable bg = rounded(has ? 0xF2FFFFFF : 0x29FFFFFF, dp(18));
+            if (!has) bg.setStroke(Math.max(1, dp(1) / 2), 0x40FFFFFF);
+            v.setBackground(bg);
+            ((TextView) v).setTextColor(has ? 0xFF0B0D12 : Color.WHITE);
+        });
+        b.getOnFocusChangeListener().onFocusChange(b, false);
+        return b;
     }
 
     private void menu(String title, String[] labels, Runnable[] actions) {

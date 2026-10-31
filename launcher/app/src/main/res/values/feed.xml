@@ -20,4 +20,28 @@
     <string name="feed_accessories" translatable="false">Remotes &amp; Accessories</string>
     <!-- Under the date: the Feed add-on's refresh. -->
     <string name="feed_refreshing">Refreshing · %1$d%%</string>
+    <!-- The header's Read more popup. -->
+    <string name="feed_read_more">Read more</string>
+    <string name="feed_close">Close</string>
+    <string name="feed_loading_details">Loading cast and details…</string>
+    <string name="feed_no_details">No more details for this title right now.</string>
+    <string name="feed_starring">Starring</string>
+    <string name="feed_director">Director</string>
+    <string name="feed_directors">Directors</string>
+    <string name="feed_created_by">Created by</string>
+    <string name="feed_seasons_label">Seasons</string>
+    <string name="feed_language">Language</string>
+    <string name="feed_released">Released</string>
+    <string name="feed_status">Status</string>
+    <string name="feed_runtime">%1$dh %2$dm</string>
+    <string name="feed_minutes">%1$d min</string>
+    <string name="feed_episode_length">about %1$d min each</string>
+    <plurals name="feed_seasons">
+        <item quantity="one">%d season</item>
+        <item quantity="other">%d seasons</item>
+    </plurals>
+    <plurals name="feed_episodes">
+        <item quantity="one">%d episode</item>
+        <item quantity="other">%d episodes</item>
+    </plurals>
 </resources>

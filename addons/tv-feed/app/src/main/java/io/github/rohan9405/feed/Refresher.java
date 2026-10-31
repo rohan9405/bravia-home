@@ -420,6 +420,7 @@ final class Refresher {
         i.overview = t.overview;
         i.genre = t.genres;
         i.released = t.released;
+        i.tmdb = t.id > 0 ? t.kind + ":" + t.id : "";
         i.subtitle = t.season;
         i.posterSource = t.backdrop;
         i.plainArt = true;

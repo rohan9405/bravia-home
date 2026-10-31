@@ -42,7 +42,7 @@ final class Feed {
     /** Never in the header: its rows are videos, not releases. */
     static final String YOUTUBE = "com.google.android.youtube.tv";
     private static final String[] COLUMNS = {"row", "row_order", "title", "subtitle", "rating", "progress",
-            "poster", "backdrop", "intent", "package", "section", "tab", "overview", "kind", "year", "genre", "plain_art", "engaged", "released"};
+            "poster", "backdrop", "intent", "package", "section", "tab", "overview", "kind", "year", "genre", "plain_art", "engaged", "released", "tmdb"};
 
     /** One tile. */
     static final class Entry {
@@ -55,6 +55,8 @@ final class Feed {
         long engaged;
         /** "2026-10-23": first release (a new season: its premiere); empty when unknown. */
         String released = "";
+        /** "movie:123" or "tv:456": the TMDB title Read more asks about; empty when unknown. */
+        String tmdb = "";
         final int progress, order;
 
         Entry(String section, String tab, int order, String title, String subtitle, String rating, int progress,
@@ -263,6 +265,7 @@ final class Feed {
                         int ec = c.getColumnIndex("engaged");
                         entries.get(entries.size() - 1).engaged = ec < 0 || c.isNull(ec) ? 0 : c.getLong(ec);
                         entries.get(entries.size() - 1).released = s(c, "released");
+                        entries.get(entries.size() - 1).tmdb = s(c, "tmdb");
                     }
                 } catch (RuntimeException gone) {
                     return;
@@ -477,6 +480,31 @@ final class Feed {
     }
 
     /** The art at {@code source}, decoded to about {@code widthPx}; onLoaded on the main thread, null when none. */
+    /**
+     * Read more: the title's cast, crew and facts, which the add-on fetches when asked (a second or two the first
+     * time). Column -> value on the main thread, or null when it has none or is too old to know the question.
+     */
+    void details(String tmdb, Consumer<Map<String, String>> onDone) {
+        Uri q = uri.buildUpon().path("details").appendQueryParameter("tmdb", tmdb).build();
+        try {
+            io.execute(() -> {
+                Map<String, String> out = null;
+                try (Cursor c = ctx.getContentResolver().query(q, null, null, null, null)) {
+                    if (c != null && c.moveToFirst()) {
+                        out = new java.util.HashMap<>();
+                        for (String col : c.getColumnNames()) out.put(col, s(c, col));
+                    }
+                } catch (RuntimeException gone) {
+                    // The add-on went away: the popup keeps what Home already had.
+                }
+                Map<String, String> found = out;
+                main.post(() -> onDone.accept(found));
+            });
+        } catch (RejectedExecutionException shutDown) {
+            // Home is being destroyed.
+        }
+    }
+
     void loadArt(String source, int widthPx, Consumer<Bitmap> onLoaded) {
         if (!ours(source)) {
             onLoaded.accept(null);

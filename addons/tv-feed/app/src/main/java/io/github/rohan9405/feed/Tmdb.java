@@ -53,6 +53,15 @@ final class Tmdb {
         double popularity;
     }
 
+    /** Read more's facts about one title; "" or 0 where TMDB has none. */
+    static final class Details {
+        String overview = "", tagline = "", released = "", certification = "", language = "", status = "";
+        /** Names, comma-separated, best known first. */
+        String cast = "", directors = "", creators = "";
+        /** Minutes: a film's length, a series' usual episode. */
+        int runtime, episodeRuntime, seasons, episodes;
+    }
+
     private final String token;
     private final File cache;
 
@@ -198,6 +207,88 @@ final class Tmdb {
             if (n != null && !n.isEmpty() && !names.contains(n)) names.add(n);
         }
         return android.text.TextUtils.join(", ", names);
+    }
+
+    /** A film's or series' details with its credits and ratings, kept a week; null for a bad id or no answer. */
+    Details details(String kindAndId) {
+        int colon = kindAndId.indexOf(':');
+        if (colon < 0) return null;
+        String kind = kindAndId.substring(0, colon), id = kindAndId.substring(colon + 1);
+        if (!id.matches("\\d+") || !("movie".equals(kind) || "tv".equals(kind))) return null;
+        String extra = "movie".equals(kind) ? "credits,release_dates" : "aggregate_credits,content_ratings";
+        JSONObject o = get("/3/" + kind + "/" + id + "?append_to_response=" + extra, 7 * 24 * HOUR_MS);
+        return o == null ? null : parseDetails(kind, o);
+    }
+
+    static Details parseDetails(String kind, JSONObject o) {
+        Details d = new Details();
+        boolean film = "movie".equals(kind);
+        d.overview = o.optString("overview");
+        d.tagline = o.optString("tagline");
+        d.released = o.optString(film ? "release_date" : "first_air_date");
+        d.status = film ? "" : o.optString("status");
+        d.runtime = film ? o.optInt("runtime") : 0;
+        if (!film) {
+            JSONArray each = o.optJSONArray("episode_run_time");
+            d.episodeRuntime = each != null && each.length() > 0 ? each.optInt(0)
+                    : o.optJSONObject("last_episode_to_air") == null ? 0 : o.optJSONObject("last_episode_to_air").optInt("runtime");
+            d.seasons = o.optInt("number_of_seasons");
+            d.episodes = o.optInt("number_of_episodes");
+        }
+        d.language = language(o);
+        d.certification = film ? filmRating(o.optJSONObject("release_dates")) : seriesRating(o.optJSONObject("content_ratings"));
+        JSONObject credits = o.optJSONObject(film ? "credits" : "aggregate_credits");
+        d.cast = names(credits == null ? null : credits.optJSONArray("cast"), null, 6);
+        d.directors = film ? names(credits == null ? null : credits.optJSONArray("crew"), "Director", 2) : "";
+        d.creators = film ? "" : names(o.optJSONArray("created_by"), null, 3);
+        return d;
+    }
+
+    /** "Hindi": the original language's English name, from the title's own languages, else Java's. */
+    private static String language(JSONObject o) {
+        String code = o.optString("original_language");
+        JSONArray spoken = o.optJSONArray("spoken_languages");
+        for (int i = 0; spoken != null && i < spoken.length(); i++) {
+            JSONObject l = spoken.optJSONObject(i);
+            if (l != null && code.equals(l.optString("iso_639_1")) && !l.optString("english_name").isEmpty()) return l.optString("english_name");
+        }
+        return code.isEmpty() ? "" : new java.util.Locale(code).getDisplayLanguage(java.util.Locale.ENGLISH);
+    }
+
+    /** India's age rating for a film ("UA 16+"), from its Indian releases; empty when it has none. */
+    private static String filmRating(JSONObject releases) {
+        JSONArray countries = releases == null ? null : releases.optJSONArray("results");
+        for (int i = 0; countries != null && i < countries.length(); i++) {
+            JSONObject c = countries.optJSONObject(i);
+            if (c == null || !Providers.REGION.equals(c.optString("iso_3166_1"))) continue;
+            JSONArray dates = c.optJSONArray("release_dates");
+            for (int k = 0; dates != null && k < dates.length(); k++) {
+                String cert = dates.optJSONObject(k) == null ? "" : dates.optJSONObject(k).optString("certification").trim();
+                if (!cert.isEmpty()) return cert;
+            }
+        }
+        return "";
+    }
+
+    private static String seriesRating(JSONObject ratings) {
+        JSONArray countries = ratings == null ? null : ratings.optJSONArray("results");
+        for (int i = 0; countries != null && i < countries.length(); i++) {
+            JSONObject c = countries.optJSONObject(i);
+            if (c != null && Providers.REGION.equals(c.optString("iso_3166_1"))) return c.optString("rating").trim();
+        }
+        return "";
+    }
+
+    /** Up to max names from a credits list, in TMDB's order (best known first); only that job's when job is set. */
+    private static String names(JSONArray people, String job, int max) {
+        List<String> out = new ArrayList<>();
+        for (int i = 0; people != null && i < people.length() && out.size() < max; i++) {
+            JSONObject p = people.optJSONObject(i);
+            if (p == null || (job != null && !job.equals(p.optString("job")))) continue;
+            String n = p.optString("name");
+            if (!n.isEmpty() && !out.contains(n)) out.add(n);
+        }
+        return String.join(", ", out);
     }
 
     /** The most popular series and films on a service, mixed. */

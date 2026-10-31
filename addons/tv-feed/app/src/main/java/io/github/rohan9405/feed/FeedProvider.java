@@ -24,7 +24,7 @@ import java.util.List;
 public final class FeedProvider extends ContentProvider {
     static final String AUTHORITY = "io.github.rohan9405.feed";
     static final String[] COLUMNS = {"row", "row_order", "title", "subtitle", "rating", "progress",
-            "poster", "backdrop", "intent", "package", "hero", "section", "tab", "overview", "kind", "year", "genre", "plain_art", "engaged", "released"};
+            "poster", "backdrop", "intent", "package", "hero", "section", "tab", "overview", "kind", "year", "genre", "plain_art", "engaged", "released", "tmdb"};
 
     static Uri itemsUri() {
         return new Uri.Builder().scheme(ContentResolver.SCHEME_CONTENT).authority(AUTHORITY).appendPath("items").build();
@@ -33,6 +33,20 @@ public final class FeedProvider extends ContentProvider {
     /** The running refresh's progress (-1 when none runs) and when the last one finished, for Home's top bar. */
     static Uri statusUri() {
         return new Uri.Builder().scheme(ContentResolver.SCHEME_CONTENT).authority(AUTHORITY).appendPath("status").build();
+    }
+
+    /** Read more: one title's cast, crew and facts from TMDB, asked for when Home opens the popup. */
+    static final String[] DETAILS = {"overview", "tagline", "released", "runtime", "episode_runtime", "seasons", "episodes",
+            "certification", "cast", "directors", "creators", "language", "status"};
+
+    /** A row of {@link #DETAILS} for "movie:123" or "tv:456", fetched now (kept a week); null when TMDB has nothing. */
+    private Cursor details(String tmdb) {
+        Tmdb.Details d = tmdb == null ? null : new Tmdb(getContext()).details(tmdb);
+        if (d == null) return null;
+        MatrixCursor c = new MatrixCursor(DETAILS);
+        c.addRow(new Object[] {d.overview, d.tagline, d.released, d.runtime, d.episodeRuntime, d.seasons, d.episodes,
+                d.certification, d.cast, d.directors, d.creators, d.language, d.status});
+        return c;
     }
 
     static Uri imageUri(String name) {
@@ -54,6 +68,7 @@ public final class FeedProvider extends ContentProvider {
             c.setNotificationUri(getContext().getContentResolver(), statusUri());
             return c;
         }
+        if ("details".equals(uri.getLastPathSegment())) return details(uri.getQueryParameter("tmdb"));
         if (!"items".equals(uri.getLastPathSegment())) return null;
         Store.Snapshot s = Store.get(getContext());
         // Home sends its drawer apps: TMDB is asked about those only, and straight away for one just added.
@@ -66,7 +81,7 @@ public final class FeedProvider extends ContentProvider {
             c.addRow(new Object[] {i.row, i.rowOrder, i.title, i.subtitle, i.rating, i.progress,
                     i.poster.isEmpty() ? "" : imageUri(i.poster).toString(),
                     i.backdrop.isEmpty() ? "" : imageUri(i.backdrop).toString(),
-                    i.intent, i.pkg, i.hero ? 1 : 0, i.section, i.tab, i.overview, i.kind, i.year, i.genre, i.plainArt ? 1 : 0, i.engaged, i.released});
+                    i.intent, i.pkg, i.hero ? 1 : 0, i.section, i.tab, i.overview, i.kind, i.year, i.genre, i.plainArt ? 1 : 0, i.engaged, i.released, i.tmdb});
         }
         c.setNotificationUri(getContext().getContentResolver(), itemsUri());
         // When these rows were made: Home draws the header's picks from it, a new draw for each refresh.
