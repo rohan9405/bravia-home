@@ -257,16 +257,31 @@ final class Refresher {
         // Ratings (the StreamRatings cache), then the header's ranking, then art.
         step(ctx, 70);
         Omdb omdb = new Omdb(ctx, RATING_BUDGET);
+        Map<Item, String> unrated = new LinkedHashMap<>();
+        Tmdb ids = new Tmdb(ctx);
         int rated = 0;
         for (Item i : items) {
             step(ctx, 70 + 15 * rated++ / Math.max(1, items.size()));
             if (!Pick.rateable(i.pkg)) continue;
             Omdb.Entry e = omdb.lookup(i.title, i.year);
+            if (e != null && e.rating.isEmpty() && !e.imdbId.isEmpty()) unrated.put(i, e.imdbId);
+            // OMDb does not know it yet: TMDB knows a TMDB title's IMDb id.
+            else if ((e == null || !e.found) && !i.tmdb.isEmpty()) {
+                String id = ids.imdbId(i.tmdb);
+                if (!id.isEmpty()) unrated.put(i, id);
+            }
             if (e == null) continue;
             i.rating = e.rating;
             if (i.genre.isEmpty()) i.genre = e.genre;
             if (i.kind.isEmpty()) i.kind = "series".equals(e.type) ? "tv" : "movie".equals(e.type) ? "movie" : "";
         }
+        // New titles: OMDb has no rating for weeks, IMDb has one after a few votes.
+        Map<String, String> imdb = new Imdb(ctx).ratings(unrated.values());
+        for (Map.Entry<Item, String> u : unrated.entrySet()) {
+            String r = imdb.get(u.getValue());
+            if (r != null) u.getKey().rating = r;
+        }
+        android.util.Log.i("Feed", "ratings: " + unrated.size() + " without one on OMDb, " + imdb.size() + " from IMDb");
         Map<String, Integer> heroCount = new LinkedHashMap<>();
         for (Item i : items) if (Item.HERO.equals(i.section)) heroCount.merge(i.tab, 1, Integer::sum);
         android.util.Log.i("Feed", "header candidates " + heroCount);

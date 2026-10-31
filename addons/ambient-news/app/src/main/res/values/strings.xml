@@ -2,9 +2,10 @@
 <resources>
     <string name="app_name">Ambient News</string>
     <string name="settings_title">Ambient News</string>
-    <string name="settings_intro">Now and then, a news story fills the screen between Google\'s screensaver wallpapers: the photo, the headline, the publisher and a QR code to read more. Back closes the screensaver as usual.</string>
+    <string name="settings_intro">News stories take turns with Google\'s screensaver wallpapers, full screen: the photo, the headline, the publisher and a QR code to read more. On a story, Left and Right go back and forward through the stories; Back closes the screensaver as usual.</string>
     <string name="row_enabled">News in the screensaver</string>
-    <string name="row_frequency">How often</string>
+    <string name="row_stories">News stories in a row</string>
+    <string name="row_wallpapers">Then wallpapers</string>
     <string name="row_length">Each story stays</string>
     <string name="row_topic_india">India</string>
     <string name="row_topic_business">Business &amp; markets</string>
@@ -17,11 +18,10 @@
     <string name="row_preview">Start the screensaver now</string>
     <string name="section_sources">Sources</string>
     <string name="section_topics">Topics</string>
-    <string name="section_timing">Timing</string>
+    <string name="section_timing">Sequence</string>
     <string name="source_google">Google News</string>
     <string name="source_thenews">TheNewsAPI</string>
     <string name="no_token">no token yet (my-tv/api-keys.sh)</string>
-    <string name="gap_range">every %1$s to %2$s</string>
     <string name="topic_business_short">Business</string>
     <string name="scan_to_read">Scan to read more</string>
     <string name="status_counts">%1$d stories ready: Google News %2$d, TheNewsAPI %3$d · updated %4$s</string>

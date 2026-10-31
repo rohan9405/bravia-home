@@ -3,10 +3,12 @@ package io.github.rohan9405.ambient;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-/** What Settings controls, kept on the TV. Everything starts on, a story every 1–3 minutes for 20 seconds. */
+/**
+ * What Settings controls, kept on the TV. Everything starts on: one story after every two wallpapers, for 20 seconds.
+ */
 final class Prefs {
-    /** How often a story comes up: the gap between stories, drawn at random between the two (seconds). */
-    static final int[][] GAPS = {{30, 90}, {60, 180}, {180, 360}, {300, 600}};
+    /** Choices for the sequence: so many stories in a row, then so many of Google's wallpapers, and again. */
+    static final int[] COUNTS = {0, 1, 2, 3, 4, 5};
     static final int[] LENGTHS = {15, 20, 30};
 
     private final SharedPreferences p;
@@ -51,9 +53,18 @@ final class Prefs {
         return p.getInt("thenews_turn", 0);
     }
 
-    /** Index into {@link #GAPS}. */
-    int gap() {
-        return Math.max(0, Math.min(GAPS.length - 1, p.getInt("gap", 1)));
+    /** Stories in a row, before the wallpapers come back; 0 shows none. */
+    int stories() {
+        return count("stories", 1);
+    }
+
+    /** Google's wallpapers between one run of stories and the next; 0 runs the stories on and on. */
+    int wallpapers() {
+        return count("wallpapers", 2);
+    }
+
+    private int count(String key, int fallback) {
+        return Math.max(0, Math.min(COUNTS[COUNTS.length - 1], p.getInt(key, fallback)));
     }
 
     /** Seconds a story stays on screen. */
@@ -68,7 +79,7 @@ final class Prefs {
         return p.getString("token", "").trim();
     }
 
-    /** The next screensaver shows a story after a few seconds, not after the usual gap: Settings' preview. */
+    /** The next screensaver shows a story after a few seconds, not after the usual wallpapers: Settings' preview. */
     boolean previewOnce() {
         return p.getBoolean("preview", false);
     }

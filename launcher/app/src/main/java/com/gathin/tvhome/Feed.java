@@ -547,6 +547,34 @@ final class Feed {
         }
     }
 
+    /**
+     * Opens a title. One the app did not publish (a TMDB title, which only opens the app) is looked up first: the add-on
+     * asks JustWatch for the title's own page in the app (a second the first time, kept after); without one, the app.
+     * onDone gets false when nothing could be opened.
+     */
+    void watch(Entry e, Consumer<Boolean> onDone) {
+        if (e.tmdb.isEmpty() || !e.intent.contains("LEANBACK_LAUNCHER")) {
+            onDone.accept(open(ctx, e.intent, e.pkg));
+            return;
+        }
+        Uri q = uri.buildUpon().path("link").appendQueryParameter("tmdb", e.tmdb).appendQueryParameter("pkg", e.pkg)
+                .appendQueryParameter("title", e.title).build();
+        try {
+            io.execute(() -> {
+                String link = "";
+                try (Cursor c = ctx.getContentResolver().query(q, null, null, null, null)) {
+                    if (c != null && c.moveToFirst()) link = s(c, "intent");
+                } catch (RuntimeException gone) {
+                    // The add-on went away: the app's start screen.
+                }
+                String found = link;
+                main.post(() -> onDone.accept(!found.isEmpty() && open(ctx, found, e.pkg) || open(ctx, e.intent, e.pkg)));
+            });
+        } catch (RejectedExecutionException shutDown) {
+            // Home is being destroyed.
+        }
+    }
+
     void loadArt(String source, int widthPx, Consumer<Bitmap> onLoaded) {
         if (!ours(source)) {
             onLoaded.accept(null);
@@ -604,11 +632,15 @@ final class Feed {
      * the app's start screen.
      */
     static boolean open(Context ctx, Entry e) {
+        return open(ctx, e.intent, e.pkg);
+    }
+
+    static boolean open(Context ctx, String intent, String pkg) {
         PackageManager pm = ctx.getPackageManager();
         try {
-            Intent i = Intent.parseUri(e.intent, Intent.URI_INTENT_SCHEME);
+            Intent i = Intent.parseUri(intent, Intent.URI_INTENT_SCHEME);
             i.setSelector(null);
-            if (i.getPackage() == null && i.getComponent() == null && !e.pkg.isEmpty()) i.setPackage(e.pkg);
+            if (i.getPackage() == null && i.getComponent() == null && !pkg.isEmpty()) i.setPackage(pkg);
             String target = i.getComponent() != null ? i.getComponent().getPackageName() : i.getPackage();
             if (target != null && !target.equals(ctx.getPackageName())) {
                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -618,9 +650,9 @@ final class Feed {
         } catch (URISyntaxException | RuntimeException ignored) {
             // Fall through to the app's start screen.
         }
-        if (e.pkg.isEmpty()) return false;
-        Intent launch = pm.getLeanbackLaunchIntentForPackage(e.pkg);
-        if (launch == null) launch = pm.getLaunchIntentForPackage(e.pkg);
+        if (pkg.isEmpty()) return false;
+        Intent launch = pm.getLeanbackLaunchIntentForPackage(pkg);
+        if (launch == null) launch = pm.getLaunchIntentForPackage(pkg);
         if (launch == null) return false;
         try {
             ctx.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));

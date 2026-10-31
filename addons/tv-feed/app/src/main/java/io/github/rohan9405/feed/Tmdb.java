@@ -220,7 +220,15 @@ final class Tmdb {
         return o == null ? null : parseDetails(kind, o);
     }
 
-    static Details parseDetails(String kind, JSONObject o) {
+    /** The title's IMDb id ("tt123") for "movie:123" or "tv:456", kept a year; empty when TMDB has none. */
+    String imdbId(String kindAndId) {
+        if (kindAndId == null || !kindAndId.matches("(movie|tv):\\d+")) return "";
+        JSONObject o = get("/3/" + kindAndId.replace(':', '/') + "/external_ids", 365 * 24 * HOUR_MS);
+        String id = o == null ? "" : o.optString("imdb_id");
+        return id.matches("tt\\d+") ? id : "";
+    }
+
+        static Details parseDetails(String kind, JSONObject o) {
         Details d = new Details();
         boolean film = "movie".equals(kind);
         d.overview = o.optString("overview");

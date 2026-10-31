@@ -27,7 +27,7 @@ import java.util.Locale;
 
 /**
  * The insight chip beside the date: today's change on the INDmoney portfolio, then NIFTY, then SENSEX, one at a time,
- * turning every 30 seconds (still while focused). OK opens the details. The Feed add-on fetches the figures and holds
+ * turning every 30 seconds with a short rise (still while focused). OK opens the details. The Feed add-on fetches the figures and holds
  * the Feed screen's settings (the chip on or off, the portfolio shown or only the indices, how often it turns); this
  * only shows them, with their time, and never shows a missing figure as zero.
  */
@@ -46,10 +46,7 @@ final class InsightCard {
     private final Runnable turn = new Runnable() {
         @Override
         public void run() {
-            if (!chip.hasFocus()) {
-                step++;
-                paint();
-            }
+            if (!chip.hasFocus()) slide();
             handler.postDelayed(this, turnMs);
         }
     };
@@ -135,6 +132,22 @@ final class InsightCard {
 
     void stop() {
         handler.removeCallbacks(turn);
+    }
+
+    /** The next view rises in: the current one lifts away and fades, then the next comes up from below. */
+    private void slide() {
+        float lift = dp(10);
+        for (View v : new View[] {label, value}) v.animate().cancel();
+        label.animate().translationY(-lift).alpha(0f).setDuration(220);
+        value.animate().translationY(-lift).alpha(0f).setDuration(220).withEndAction(() -> {
+            step++;
+            paint();
+            for (View v : new View[] {label, value}) {
+                v.setTranslationY(lift);
+                v.animate().translationY(0f).alpha(1f).setDuration(320)
+                        .setInterpolator(new android.view.animation.DecelerateInterpolator());
+            }
+        });
     }
 
     private void paint() {

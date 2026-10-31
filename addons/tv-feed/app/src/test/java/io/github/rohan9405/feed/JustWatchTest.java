@@ -60,4 +60,27 @@ public class JustWatchTest {
         assertNull(JustWatch.title(edge("{node: {objectType: 'EPISODE', content: {title: 'x', originalReleaseDate: '2026-10-01'}}}")));
         assertNull(JustWatch.title(edge("{}")));
     }
+
+    @Test
+    public void titlePagesMatchTheTmdbIdAndOpenTheAppsPage() {
+        JSONObject boys = edge("{data: {popularTitles: {edges: ["
+                + "{node: {objectType: 'MOVIE', content: {externalIds: {tmdbId: '1266959'}}, offers: [{standardWebURL: 'https://app.primevideo.com/detail?gti=film'}]}},"
+                + "{node: {objectType: 'SHOW', content: {externalIds: {tmdbId: '76479'}}, offers: [{standardWebURL: 'https://app.primevideo.com/detail?gti=show',"
+                + " deeplinkURL: 'intent://app.primevideo.com/watch?gti=show#Intent;end'}]}}]}}}");
+        assertEquals("intent://app.primevideo.com/detail?gti=show#Intent;scheme=https;package=com.amazon.amazonvideo.livingroom;end",
+                JustWatch.pick(boys, "com.amazon.amazonvideo.livingroom", "tv:76479", "The Boys"));
+        assertEquals("", JustWatch.pick(boys, "com.amazon.amazonvideo.livingroom", "movie:76479", "The Boys"));   // type and id both
+        assertEquals("", JustWatch.pick(edge("{errors: []}"), "com.netflix.ninja", "tv:1", "x"));
+    }
+
+    @Test
+    public void appleOpensTheShowNotItsFirstEpisodeAndHotstarItsOwnLink() {
+        assertEquals("intent://tv.apple.com/in/show/severance/umc.cmc.1srk#Intent;scheme=https;package=com.apple.atve.androidtv.appletv;end",
+                JustWatch.page("com.apple.atve.androidtv.appletv",
+                        "https://tv.apple.com/in/episode/good-news/umc.cmc.s80?at=1&showId=umc.cmc.1srk&playableId=tvs.sbd.4000", "", "Severance"));
+        assertEquals("intent://tv.apple.com/in/movie/f1/umc.cmc.3t#Intent;scheme=https;package=com.apple.atve.androidtv.appletv;end",
+                JustWatch.page("com.apple.atve.androidtv.appletv", "https://tv.apple.com/in/movie/f1/umc.cmc.3t?at=1", "", "F1"));
+        assertEquals("intent://content/127#Intent;scheme=hotstar;end",
+                JustWatch.page("in.startv.hotstar", "https://www.hotstar.com/in/127", "intent://content/127#Intent;scheme=hotstar;end", "x"));
+    }
 }

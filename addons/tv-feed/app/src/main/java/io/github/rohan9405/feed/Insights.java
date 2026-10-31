@@ -33,7 +33,7 @@ final class Insights {
     private static final AtomicBoolean RUNNING = new AtomicBoolean();
 
     /** Seconds between the chip's turns, as offered on the Feed screen. */
-    static final int[] ROTATIONS = {10, 20, 30, 60};
+    static final int[] ROTATIONS = {5, 10, 20, 30, 60};
 
     private Insights() {
     }

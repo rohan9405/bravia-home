@@ -24,6 +24,7 @@ import android.provider.Settings;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
@@ -42,34 +43,43 @@ import java.util.Date;
 import java.util.EnumMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Random;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Waits for Google's screensaver and, while it runs, now and then shows a news story over it, full screen: the photo,
- * the topic and publisher, the headline, the date and a QR code to read more, for a while, then Google's wallpapers
- * again. The story never takes focus, so the remote still goes to the screensaver, and it goes the moment the
- * screensaver stops. Stories are fetched every hour, in the background.
+ * Waits for Google's screensaver and, while it runs, takes turns with it: so many of its wallpapers, then so many news
+ * stories full screen (the photo, the topic and publisher, the headline, the date and a QR code to read more), and
+ * again. While a story is up, Left and Right go back and forward through the stories this screensaver has shown, the
+ * way they do through the wallpapers; Back or OK leaves the screensaver, and any other key goes back to the
+ * wallpapers. The stories go the moment the screensaver stops. Stories are fetched every hour, in the background.
  */
 public class AmbientService extends Service {
     static final String ACTION_REFRESH = "io.github.rohan9405.ambient.REFRESH";
     private static final String TAG = "AmbientNews";
     private static final long REFRESH_MS = 60L * 60 * 1000;
+    /** How long Google's Ambient keeps each wallpaper up (measured on the BRAVIA; it has no setting for it). */
+    private static final long WALLPAPER_MS = 60_000;
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     /** Loads a story's photo; its own thread, so a story never waits for a fetch that is under way. */
     private final ExecutorService art = Executors.newSingleThreadExecutor();
-    private final Random random = new Random();
     private Prefs prefs;
     private Stories stories;
     private WindowManager wm;
-    private View slide;
+    /** The window the stories show in, while a run of them is up; each story is a page in it. */
+    private FrameLayout slide;
     private boolean dreaming;
+    /** The stories this screensaver has shown, in order, and which one is up: Left and Right walk this. */
+    private final List<Stories.Ready> seen = new ArrayList<>();
+    private int at = -1;
+    /** Stories that have had their full time in this run. */
+    private int inRow;
 
-    private final Runnable showNext = this::showNext;
-    private final Runnable hideSlide = () -> hide(true);
+    private final Runnable startRun = () -> forward(false);
+    private final Runnable storyDone = this::storyDone;
     private final Runnable refreshTick = new Runnable() {
         @Override
         public void run() {
@@ -87,11 +97,14 @@ public class AmbientService extends Service {
                 if (System.currentTimeMillis() - stories.updated() > REFRESH_MS) refresh();
                 boolean preview = prefs.previewOnce();
                 if (preview) prefs.set("preview", false);
-                schedule(preview ? 4000 : gap());
+                seen.clear();
+                at = -1;
+                inRow = 0;
+                schedule(preview ? 4000 : wallpapersMs());
             } else {
                 dreaming = false;
-                main.removeCallbacks(showNext);
-                main.removeCallbacks(hideSlide);
+                main.removeCallbacks(startRun);
+                main.removeCallbacks(storyDone);
                 hide(false);
             }
         }
@@ -137,55 +150,162 @@ public class AmbientService extends Service {
         });
     }
 
-    private long gap() {
-        int[] g = Prefs.GAPS[prefs.gap()];
-        return 1000L * (g[0] + random.nextInt(g[1] - g[0] + 1));
+    /** The time Settings' wallpapers take; with none, the next run starts as soon as the last one ends. */
+    private long wallpapersMs() {
+        return prefs.wallpapers() * WALLPAPER_MS;
     }
 
+    /** The next run of stories comes after the wallpapers; with stories set to none, it never does. */
     private void schedule(long ms) {
-        main.removeCallbacks(showNext);
-        main.postDelayed(showNext, ms);
+        main.removeCallbacks(startRun);
+        if (prefs.stories() > 0) main.postDelayed(startRun, ms);
     }
 
-    private void showNext() {
+    /** The story after the one up: the next one already seen, else a new one; the run ends when there is none. */
+    private void forward(boolean byKey) {
         if (!dreaming) return;
-        Stories.Ready r = slide == null && Settings.canDrawOverlays(this) ? stories.next(prefs) : null;
-        if (r == null) {
-            schedule(gap());
+        if (at + 1 < seen.size()) {
+            load(seen.get(at + 1), at + 1);
             return;
         }
+        Stories.Ready r = Settings.canDrawOverlays(this) ? stories.next(prefs) : null;
+        if (r == null) {
+            if (!byKey) endRun();
+            return;
+        }
+        seen.add(r);
+        load(r, seen.size() - 1);
+    }
+
+    private void back() {
+        if (at > 0) load(seen.get(at - 1), at - 1);
+    }
+
+    /** A story's full time is up: the next in the run, or the wallpapers again. */
+    private void storyDone() {
+        inRow++;
+        if (prefs.wallpapers() == 0 || inRow < prefs.stories()) forward(false);
+        else endRun();
+    }
+
+    private void endRun() {
+        inRow = 0;
+        hide(true);
+        if (dreaming) schedule(wallpapersMs() > 0 ? wallpapersMs() : WALLPAPER_MS);
+    }
+
+    private void load(Stories.Ready r, int index) {
+        main.removeCallbacks(storyDone);
         art.execute(() -> {
             Bitmap photo = BitmapFactory.decodeFile(r.photo.getPath());
             Bitmap code = qr(r.story.link, px(150));
-            main.post(() -> show(r.story, photo, code));
+            main.post(() -> show(r.story, photo, code, index));
         });
     }
 
-    private void show(News.Story s, Bitmap photo, Bitmap code) {
-        if (!dreaming || photo == null || slide != null) {
-            if (dreaming) schedule(gap());
+    private void show(News.Story s, Bitmap photo, Bitmap code, int index) {
+        if (!dreaming) return;
+        if (photo == null) {
+            // Its photo is gone (a refresh cleared it): skip it.
+            seen.remove(index);
+            if (index <= at) at--;
+            forward(false);
             return;
         }
-        slide = buildSlide(s, photo, code);
-        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                PixelFormat.TRANSLUCENT);
-        try {
-            slide.setAlpha(0f);
-            wm.addView(slide, lp);
-            slide.animate().alpha(1f).setDuration(900).start();
-            Log.i(TAG, "showing: " + s.source + " · " + s.title);
-            main.postDelayed(hideSlide, prefs.length() * 1000L);
-        } catch (RuntimeException e) {
-            Log.w(TAG, "could not show the story: " + e);
-            slide = null;
-            schedule(gap());
+        View page = buildSlide(s, photo, code);
+        at = index;
+        if (slide == null) {
+            slide = keys();
+            slide.addView(page);
+            WindowManager.LayoutParams lp = new WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT,
+                    WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                            | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                    PixelFormat.TRANSLUCENT);
+            try {
+                slide.setAlpha(0f);
+                wm.addView(slide, lp);
+                slide.requestFocus();
+                slide.animate().alpha(1f).setDuration(900).start();
+            } catch (RuntimeException e) {
+                Log.w(TAG, "could not show the story: " + e);
+                slide = null;
+                schedule(WALLPAPER_MS);
+                return;
+            }
+        } else {
+            // One story into the next: the new page fades in over the old, which then goes.
+            int old = slide.getChildCount();
+            page.setAlpha(0f);
+            slide.addView(page);
+            page.animate().alpha(1f).setDuration(600).withEndAction(() -> {
+                if (slide != null) slide.removeViews(0, Math.min(old, slide.getChildCount() - 1));
+            }).start();
         }
+        Log.i(TAG, "showing " + (index + 1) + "/" + seen.size() + ": " + s.source + " · " + s.title);
+        main.removeCallbacks(storyDone);
+        main.postDelayed(storyDone, prefs.length() * 1000L);
     }
 
-    /** Fades the story out (or, when the screensaver stops, removes it at once) and waits for the next. */
+    /** The stories' window: it takes the remote while it is up, for Left and Right. */
+    private FrameLayout keys() {
+        FrameLayout f = new FrameLayout(this) {
+            @Override
+            public boolean dispatchKeyEvent(KeyEvent e) {
+                int key = e.getKeyCode();
+                if (key == KeyEvent.KEYCODE_VOLUME_UP || key == KeyEvent.KEYCODE_VOLUME_DOWN || key == KeyEvent.KEYCODE_VOLUME_MUTE) {
+                    return false;
+                }
+                if (e.getAction() != KeyEvent.ACTION_DOWN) return true;
+                switch (key) {
+                    case KeyEvent.KEYCODE_DPAD_LEFT:
+                        back();
+                        break;
+                    case KeyEvent.KEYCODE_DPAD_RIGHT:
+                        forward(true);
+                        break;
+                    case KeyEvent.KEYCODE_BACK:
+                    case KeyEvent.KEYCODE_DPAD_CENTER:
+                    case KeyEvent.KEYCODE_ENTER:
+                        leave();
+                        break;
+                    default:
+                        // Up, Down and the rest: back to the wallpapers, where the screensaver takes them.
+                        main.removeCallbacks(storyDone);
+                        endRun();
+                        break;
+                }
+                return true;
+            }
+        };
+        f.setFocusable(true);
+        f.setFocusableInTouchMode(true);
+        return f;
+    }
+
+    /**
+     * Back or OK on a story: leaves the screensaver, as they do on a wallpaper. Waking the screen is what ends it (an
+     * app opened during the screensaver stays behind it, and a wake lock does not wake it on the BRAVIA): a moment's
+     * invisible window that asks the window manager to turn the screen on.
+     */
+    private void leave() {
+        main.removeCallbacks(storyDone);
+        hide(false);
+        View waker = new View(this);
+        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(1, 1, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                        | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
+                PixelFormat.TRANSLUCENT);
+        try {
+            wm.addView(waker, lp);
+            main.postDelayed(() -> remove(waker), 1500);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "could not wake: " + e);
+        }
+        Log.i(TAG, "leaving the screensaver");
+    }
+
+    /** Fades the stories out (or, when the screensaver stops, removes them at once). */
     private void hide(boolean fade) {
         View v = slide;
         if (v == null) return;
@@ -196,7 +316,6 @@ public class AmbientService extends Service {
             return;
         }
         v.animate().alpha(0f).setDuration(700).withEndAction(() -> remove(v)).start();
-        schedule(gap());
     }
 
     private void remove(View v) {

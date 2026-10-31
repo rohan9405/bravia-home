@@ -19,8 +19,8 @@ import android.widget.Toast;
 import java.util.Date;
 
 /**
- * Ambient News's settings, from the Apps row: on or off, each source and topic on or off, how often a story comes up
- * and how long it stays, and a button to try it now. A computer sends TheNewsAPI token here too
+ * Ambient News's settings, from the Apps row: on or off, each source and topic on or off, how many stories come up
+ * after how many wallpapers, how long each stays, and a button to try it now. A computer sends TheNewsAPI token here too
  * (my-tv/api-keys.sh: --es news_token), or asks for that try (--ez preview true); those starts close again at once.
  */
 public class SettingsActivity extends Activity {
@@ -89,9 +89,10 @@ public class SettingsActivity extends Activity {
         section(R.string.section_topics);
         for (String topic : News.TOPICS) row(getString(topicLabel(topic, false)), onOff(prefs.topic(topic)), () -> toggle("topic_" + topic));
         section(R.string.section_timing);
-        int[] gap = Prefs.GAPS[prefs.gap()];
-        row(getString(R.string.row_frequency), getString(R.string.gap_range, span(gap[0]), span(gap[1])),
-                () -> prefs.set("gap", (prefs.gap() + 1) % Prefs.GAPS.length));
+        row(getString(R.string.row_stories), String.valueOf(prefs.stories()),
+                () -> prefs.set("stories", (prefs.stories() + 1) % Prefs.COUNTS.length));
+        row(getString(R.string.row_wallpapers), String.valueOf(prefs.wallpapers()),
+                () -> prefs.set("wallpapers", (prefs.wallpapers() + 1) % Prefs.COUNTS.length));
         row(getString(R.string.row_length), getString(R.string.seconds, prefs.length()), () -> {
             int i = 0;
             while (Prefs.LENGTHS[i] != prefs.length()) i++;
@@ -198,11 +199,6 @@ public class SettingsActivity extends Activity {
 
     private String onOff(boolean on) {
         return getString(on ? R.string.on : R.string.off);
-    }
-
-    /** "90 s", "3 min". */
-    private String span(int seconds) {
-        return seconds < 120 ? getString(R.string.seconds, seconds) : (seconds / 60) + " min";
     }
 
     private TextView text(int sp, int colour, Typeface face) {

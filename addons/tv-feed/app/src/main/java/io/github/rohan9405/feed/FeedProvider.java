@@ -74,6 +74,13 @@ public final class FeedProvider extends ContentProvider {
             return c;
         }
         if ("details".equals(uri.getLastPathSegment())) return details(uri.getQueryParameter("tmdb"));
+        if ("link".equals(uri.getLastPathSegment())) {
+            // A title's own page in its app, looked up when Home opens it (JustWatch), for a title the app did not publish.
+            MatrixCursor c = new MatrixCursor(new String[] {"intent"});
+            c.addRow(new Object[] {new JustWatch(getContext()).link(uri.getQueryParameter("pkg"), uri.getQueryParameter("tmdb"),
+                    uri.getQueryParameter("title"))});
+            return c;
+        }
         if ("insights".equals(uri.getLastPathSegment())) {
             Insights.refreshIfStale(getContext());
             MatrixCursor c = new MatrixCursor(new String[] {"json"});

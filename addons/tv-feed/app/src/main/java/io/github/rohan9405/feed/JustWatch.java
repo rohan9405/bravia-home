@@ -41,6 +41,13 @@ final class JustWatch {
             + " externalIds { tmdbId } } } } }"
             + " newOffer(platform: WEB) { monetizationType } } } }";
 
+    private static final String SEARCH = "query($q: String!, $pkg: String!) {"
+            + " popularTitles(country: IN, first: 8, filter: {searchQuery: $q, packages: [$pkg]}) {"
+            + " edges { node { objectType content(country: IN, language: \"en\") { externalIds { tmdbId } }"
+            + " offers(country: IN, platform: ANDROID_TV, filter: {packages: [$pkg]}) {"
+            + " standardWebURL deeplinkURL(platform: ANDROID_TV) } } } } }";
+    private static final long LINK_MS = 30 * 24 * HOUR_MS, NO_LINK_MS = 24 * HOUR_MS;
+
     private final File cache;
 
     JustWatch(Context ctx) {
@@ -78,6 +85,85 @@ final class JustWatch {
             }
         }
         return out;
+    }
+
+    /**
+     * The title's own page in its app, as an intent URI, for a TMDB title ("movie:123", "tv:456") the app did not
+     * publish; empty when JustWatch does not have it on that service. Found by searching the title on the service and
+     * matching the TMDB id; kept a month (a miss, a day).
+     */
+    String link(String pkg, String tmdb, String title) {
+        Integer provider = Providers.TMDB.get(pkg);
+        String jw = provider == null ? null : Providers.justWatch(provider);
+        if (jw == null || tmdb == null || !tmdb.matches("(movie|tv):\\d+") || title == null || title.isEmpty()) return "";
+        File f = new File(cache, "link-" + jw + "-" + tmdb.replace(':', '-') + ".txt");
+        long age = System.currentTimeMillis() - f.lastModified();
+        if (f.exists() && age < (f.length() > 0 ? LINK_MS : NO_LINK_MS)) {
+            try (InputStream in = new FileInputStream(f)) {
+                return new String(Net.read(in, 1 << 14), StandardCharsets.UTF_8);
+            } catch (IOException ignored) {
+                // Ask again.
+            }
+        }
+        String link;
+        try {
+            JSONObject vars = new JSONObject().put("q", title).put("pkg", jw);
+            link = pick(new JSONObject(post(new JSONObject().put("query", SEARCH).put("variables", vars).toString())), pkg, tmdb, title);
+        } catch (Exception e) {
+            return "";   // offline or changed: not remembered, so asked again next time
+        }
+        try (FileOutputStream out = new FileOutputStream(f)) {
+            out.write(link.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException ignored) {
+            // Served without caching.
+        }
+        return link;
+    }
+
+    /** The search answer's title with this TMDB id, as an intent for its page in the app; empty when none. */
+    static String pick(JSONObject answer, String pkg, String tmdb, String title) {
+        JSONObject data = answer.optJSONObject("data");
+        JSONObject titles = data == null ? null : data.optJSONObject("popularTitles");
+        JSONArray edges = titles == null ? null : titles.optJSONArray("edges");
+        String type = tmdb.startsWith("movie:") ? "MOVIE" : "SHOW", id = tmdb.substring(tmdb.indexOf(':') + 1);
+        for (int i = 0; edges != null && i < edges.length(); i++) {
+            JSONObject node = edges.optJSONObject(i) == null ? null : edges.optJSONObject(i).optJSONObject("node");
+            if (node == null || !type.equals(node.optString("objectType"))) continue;
+            JSONObject content = node.optJSONObject("content");
+            JSONObject ids = content == null ? null : content.optJSONObject("externalIds");
+            if (ids == null || !id.equals(ids.optString("tmdbId"))) continue;
+            JSONArray offers = node.optJSONArray("offers");
+            JSONObject o = offers == null || offers.length() == 0 ? null : offers.optJSONObject(0);
+            return o == null ? "" : page(pkg, o.optString("standardWebURL"), o.optString("deeplinkURL"), title);
+        }
+        return "";
+    }
+
+    /**
+     * How each app opens a title's page, as tried on the BRAVIA: Prime Video and Netflix take their website's title
+     * address; Apple TV its show or film address (JustWatch gives a show's first episode, which would play); JioHotstar
+     * has no page-only link (every one plays), so its own link, which plays the title.
+     */
+    static String page(String pkg, String web, String deeplink, String title) {
+        if ("in.startv.hotstar".equals(pkg)) return deeplink.startsWith("intent:") ? deeplink : "";
+        if (!web.startsWith("https://")) return deeplink.startsWith("intent:") ? deeplink : "";
+        String url = web;
+        if (url.startsWith("https://tv.apple.com/")) {
+            java.util.regex.Matcher show = java.util.regex.Pattern.compile("[?&]showId=([\\w.]+)").matcher(url);
+            int q = url.indexOf('?');
+            if (url.contains("/episode/") && show.find()) {
+                String region = url.substring("https://tv.apple.com/".length()).split("/")[0];
+                url = "https://tv.apple.com/" + region + "/show/" + slug(title) + "/" + show.group(1);
+            } else if (q > 0) {
+                url = url.substring(0, q);
+            }
+        }
+        return "intent://" + url.substring("https://".length()) + "#Intent;scheme=https;package=" + pkg + ";end";
+    }
+
+    private static String slug(String title) {
+        String s = title.toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
+        return s.isEmpty() ? "show" : s;
     }
 
     /** One addition as a header title; null for what is not a film or a season, or comes without a title or date. */

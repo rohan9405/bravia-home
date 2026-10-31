@@ -15,7 +15,7 @@ New releases, IMDb ratings and Continue watching—with optional portfolio insig
 
 ![BRAVIA Home: full-screen title artwork, glass app drawer and the optional market chip](docs/screens/header.jpg)
 
-<sub>Screenshots show the current interface running in an Android TV emulator. Catalogue selections and viewing progress are sample data; all portfolio values and market quotes are fictional. The news slide is a labelled demonstration, not a real headline. No personal account data or credentials are pictured.</sub>
+<sub>Screenshots show the current interface running in an Android TV emulator. Catalogue selections and viewing progress are sample data; all portfolio values and market quotes are fictional. The Ambient News slide is a real story captured on the BRAVIA from Google News; the drawer shows the apps' own banners. No personal account data or credentials are pictured.</sub>
 
 Built and running on **Sony BRAVIA BF1 · Google TV 12**, with India's streaming services. Other Android TV / Google TV devices need their own compatibility checks, especially for inputs, remote keys and screensaver overlays.
 
@@ -25,7 +25,7 @@ Built and running on **Sony BRAVIA BF1 · Google TV 12**, with India's streaming
 
 Focus an app in the glass drawer and the header follows it: new releases from that service, with artwork, IMDb rating, year, genres and season information. Read more opens the plot and other details. The clock and glass controls sit over the artwork; a soft shade keeps the text readable.
 
-The carousel turns every eight seconds. Press **Up** to focus it, **Left / Right** to browse, and **OK** to open the selected item. It pauses while focused. App-provided links can open a title directly; catalogue-only items fall back to opening the service.
+The carousel turns every eight seconds. Press **Up** to focus it, **Left / Right** to browse, and **OK** to open the selected item. It pauses while focused. App-provided links open a title directly. For catalogue titles, OK looks up the title's own page through JustWatch the first time (then remembers it): Prime Video, Netflix and Apple TV open on the title's page; JioHotstar has no page-only link, so it starts the title. Anything JustWatch cannot match opens the service.
 
 For streaming services, the header selects up to 15 titles: five top picks and ten drawn from the remaining new releases, with a new draw on refresh. It normally looks back 14 days, or 30 for Apple TV. If the focused app has nothing new, it mixes picks from the drawer's other services.
 
@@ -63,7 +63,7 @@ The top bar includes the clock, short date, refresh progress, Inputs, Wi-Fi, Blu
 
 ## Portfolio & markets (optional)
 
-One small chip beside the date cycles through **PORTFOLIO → NIFTY → SENSEX**, one view at a time. It stops rotating while focused. Press **OK** for the expanded view; the information stays compact until you ask for more.
+One small chip beside the date cycles through **PORTFOLIO → NIFTY → SENSEX**, one view at a time, each rising in as the last one lifts away. It stops rotating while focused. Press **OK** for the expanded view; the information stays compact until you ask for more.
 
 ![Portfolio and markets detail popup with fictional balances, daily movements and index quotes](docs/screens/portfolio.jpg)
 
@@ -79,7 +79,7 @@ Open **Apps → Feed** to customise the chip:
 |---|---|
 | Insight chip | On / Off |
 | Portfolio | On / Off; Off omits the portfolio from display and subsequent holdings fetches, leaving only the indices |
-| Rotate every | 10 / 20 / 30 / 60 seconds |
+| Rotate every | 5 / 10 / 20 / 30 / 60 seconds |
 
 ![Feed settings for the optional insight chip, portfolio visibility and rotation](docs/screens/insight-settings.jpg)
 
@@ -87,11 +87,13 @@ No financial connection is needed for the rest of Home. Even in indices-only mod
 
 ## Ambient News (optional)
 
-Keep **Google's existing Ambient screensaver**. Between its wallpapers, Ambient News occasionally fades in a full-screen story: a large photo, topic, publisher, headline, publication time and a QR code to read the original article on your phone. It then fades away and Google's wallpapers continue.
+Keep **Google's existing Ambient screensaver**. Ambient News takes turns with its wallpapers in a sequence you set: **X news stories, then Y wallpapers, and repeat** (one story after every two wallpapers to start). Each story is full screen: a large photo, topic, publisher, headline, publication time and a QR code to read the original article on your phone.
 
-![Ambient News demonstration: full-screen photography, headline, attribution and a QR code](docs/screens/ambient-news.jpg)
+On a story, **Left / Right** go back and forward through the stories this screensaver has shown, in order, just as they move between wallpapers. **Back** or **OK** leaves the screensaver; Up or Down returns to the wallpapers.
 
-The image above is the actual overlay rendered with an illustrative story over the emulator's clock screensaver; the installed BRAVIA setup keeps Google Ambient. The overlay never takes focus or intercepts touches. **Back** exits the screensaver normally, and the news slide is removed when the screensaver stops. This is a separate optional add-on, not a replacement wallpaper feed.
+![Ambient News on the BRAVIA: a full-screen business story with its photo, publisher, headline, time and a QR code](docs/screens/ambient-news.jpg)
+
+The image above was captured on the BRAVIA during Google Ambient: a real Business story from Google News, with the publisher's own photo. The overlay takes the remote only while a story is up, and is removed the moment the screensaver stops. This is a separate optional add-on, not a replacement wallpaper feed.
 
 Two independently switchable connectors are included:
 
@@ -109,11 +111,12 @@ Open **Apps → Ambient News** to choose:
 | News in the screensaver | On / Off |
 | Connectors | Google News and TheNewsAPI independently On / Off; TheNewsAPI needs a token |
 | Topics | India, World, Business & markets, Technology, Sports, Entertainment, Science, Health |
-| Time between stories | Random gap of 30–90 seconds, 1–3 minutes, 3–6 minutes or 5–10 minutes |
+| News stories in a row | 0–5 (0 shows none) |
+| Then wallpapers | 0–5 (0 runs stories back to back); Google shows each wallpaper for about a minute |
 | Time on screen | 15 / 20 / 30 seconds |
 | Preview | Start the screensaver now and show a story after a few seconds, when one is ready |
 
-India, Business & markets and Technology start enabled; other topics start disabled. The default gap is 1–3 minutes and a story stays for 20 seconds. Screensaver overlays were built for the BRAVIA setup; verify behaviour on another model before leaving the service enabled.
+India, Business & markets and Technology start enabled; other topics start disabled. The default sequence is one story after every two wallpapers, and a story stays for 20 seconds. Screensaver overlays were built for the BRAVIA setup; verify behaviour on another model before leaving the service enabled.
 
 ## Make it yours
 
@@ -152,6 +155,8 @@ Google News / TheNewsAPI ── Ambient News add-on ── overlays during Googl
 | Genre pools / new seasons | 24-hour / 12-hour response caches |
 | Read more details | On demand, cached one week |
 | IMDb ratings | 3–30 days by release age; missing titles retried after five days |
+| IMDb ratings for new titles | OMDb lists new releases weeks before it has their rating; those come from IMDb itself, kept a day |
+| Title pages | Looked up on first OK; kept a month (a miss, a day) |
 | Portfolio and indices | On demand: 15 minutes during the weekday daytime window, one hour otherwise |
 | News | Hourly while the screen is on; eligible stories from the last day |
 | Artwork | Cached locally and loaded as needed |
@@ -279,4 +284,4 @@ No ads, sponsored rows or app analytics are added by this project. Connected fea
 
 Built on [CleanYourTV](https://github.com/Gathin23/cleanyourtv) by Gathin23 and contributors, including the launcher foundations, device tools and safety checks. MIT licence; see [LICENSE](LICENSE).
 
-Ratings use OMDb and the StreamRatings shared cache. Titles, artwork and metadata use TMDB, with a JustWatch fallback for new releases. This product uses the TMDB API but is not endorsed or certified by TMDB. Optional financial data uses INDmoney's official MCP; news uses Google News, TheNewsAPI and the original publishers. This project is independent of Sony and these service providers.
+Ratings use OMDb and the StreamRatings shared cache, with IMDb's own rating for new titles OMDb has not rated yet (limited personal, non-commercial use). Titles, artwork and metadata use TMDB, with a JustWatch fallback for new releases and JustWatch for opening a title's page in its app. This product uses the TMDB API but is not endorsed or certified by TMDB. Optional financial data uses INDmoney's official MCP; news uses Google News, TheNewsAPI and the original publishers. This project is independent of Sony and these service providers.

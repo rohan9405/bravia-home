@@ -50,22 +50,26 @@ final class Omdb {
         final String genre;
         /** OMDb's Type: "movie", "series" or "episode"; empty when unknown. */
         final String type;
+        /** "tt123", for IMDb's own rating while OMDb has none yet; empty when unknown. */
+        final String imdbId;
         final long savedMs;
         /** False for entries cached before genre and type were kept: they are asked for again once. */
         final boolean complete;
 
-        Entry(boolean found, String rating, String year, String released, String genre, String type, long savedMs) {
-            this(found, rating, year, released, genre, type, savedMs, true);
+        Entry(boolean found, String rating, String year, String released, String genre, String type, String imdbId,
+              long savedMs) {
+            this(found, rating, year, released, genre, type, imdbId, savedMs, true);
         }
 
-        private Entry(boolean found, String rating, String year, String released, String genre, String type, long savedMs,
-                      boolean complete) {
+        private Entry(boolean found, String rating, String year, String released, String genre, String type, String imdbId,
+                      long savedMs, boolean complete) {
             this.found = found;
             this.rating = rating;
             this.year = year;
             this.released = released;
             this.genre = genre == null || "N/A".equals(genre) ? "" : genre;
             this.type = type == null || "N/A".equals(type) ? "" : type;
+            this.imdbId = imdbId == null || !imdbId.matches("tt\\d+") ? "" : imdbId;
             this.savedMs = savedMs;
             this.complete = complete;
         }
@@ -78,20 +82,23 @@ final class Omdb {
         String toJson() {
             try {
                 return new JSONObject().put("found", found).put("rating", rating).put("year", year)
-                        .put("released", released).put("genre", genre).put("type", type).put("ts", savedMs).toString();
+                        .put("released", released).put("genre", genre).put("type", type).put("imdb", imdbId).put("ts", savedMs).toString();
             } catch (JSONException e) {
                 return "";
             }
         }
 
-        /** Null for a missing or unreadable entry (including the old "8.1@ms" format), which is then asked for again. */
+        /**
+         * Null for a missing or unreadable entry (including the old "8.1@ms" format), which is then asked for again; an
+         * unrated one saved before IMDb ids were kept is asked for again once too.
+         */
         static Entry parse(String s) {
             if (s == null || !s.startsWith("{")) return null;
             try {
                 JSONObject o = new JSONObject(s);
                 return new Entry(o.optBoolean("found"), o.optString("rating"), o.optString("year"),
-                        o.optString("released"), o.optString("genre"), o.optString("type"), o.optLong("ts"),
-                        !o.optBoolean("found") || o.has("genre"));
+                        o.optString("released"), o.optString("genre"), o.optString("type"), o.optString("imdb"),
+                        o.optLong("ts"), !o.optBoolean("found") || o.has("genre") && (o.has("imdb") || !o.optString("rating").isEmpty()));
             } catch (JSONException e) {
                 return null;
             }
@@ -187,6 +194,7 @@ final class Omdb {
                     data.isNull("released") ? "" : data.optString("released"),
                     data.isNull("genre") ? "" : data.optString("genre"),
                     data.isNull("type") ? "" : data.optString("type"),
+                    data.isNull("imdbID") ? "" : data.optString("imdbID"),
                     o.optLong("ts", System.currentTimeMillis()));
         }
         if (code >= 400 && code < 500 && o != null && o.has("error")) throw new IllegalStateException(o.optString("error"));
@@ -202,10 +210,10 @@ final class Omdb {
             // "Invalid API key!" or "Request limit reached!" is not an answer about the title: don't cache it.
             String error = o.optString("Error").toLowerCase(Locale.ROOT);
             if (error.contains("key") || error.contains("limit")) throw new IllegalStateException(error);
-            return new Entry(false, "", "", "", "", "", now);
+            return new Entry(false, "", "", "", "", "", "", now);
         }
         String rating = o.optString("imdbRating");
         return new Entry(true, rating.matches("\\d(\\.\\d)?|10(\\.0)?") ? rating : "",
-                o.optString("Year"), o.optString("Released"), o.optString("Genre"), o.optString("Type"), now);
+                o.optString("Year"), o.optString("Released"), o.optString("Genre"), o.optString("Type"), o.optString("imdbID"), now);
     }
 }

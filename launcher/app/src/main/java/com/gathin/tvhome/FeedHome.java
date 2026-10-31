@@ -146,6 +146,13 @@ final class FeedHome {
         }
     }
 
+    /** Opens a title at its own page in the app where the add-on can find one, else the app. */
+    private void watch(Feed.Entry e) {
+        feed.watch(e, ok -> {
+            if (!ok) Toast.makeText(act, act.getString(R.string.cant_open, e.title), Toast.LENGTH_SHORT).show();
+        });
+    }
+
     FeedHome(Activity act, Feed feed, Host host, Handler handler, LinearLayout container, ImageView backdrop, View scrim,
              List<String> dockApps, List<String> hiddenApps) {
         this.act = act;
@@ -247,8 +254,7 @@ final class FeedHome {
         heroBlock.setFocusable(true);
         heroBlock.setOnClickListener(v -> {
             if (heroTurn < 0 || heroTurn >= heroes.size()) return;
-            Feed.Entry h = heroes.get(heroTurn);
-            if (!Feed.open(act, h)) Toast.makeText(act, act.getString(R.string.cant_open, h.title), Toast.LENGTH_SHORT).show();
+            watch(heroes.get(heroTurn));
         });
         heroBlock.setOnLongClickListener(v -> {
             if (heroTurn >= 0 && heroTurn < heroes.size()) showDetails(heroes.get(heroTurn));
@@ -944,8 +950,7 @@ final class FeedHome {
             card.setOnClickListener(v -> {
                 int pos = h.getBindingAdapterPosition();
                 if (pos == RecyclerView.NO_POSITION) return;
-                Feed.Entry e = list.get(pos);
-                if (!Feed.open(act, e)) Toast.makeText(act, act.getString(R.string.cant_open, e.title), Toast.LENGTH_SHORT).show();
+                watch(list.get(pos));
             });
             if (section == S_CONTINUE) {
                 // Hold OK: remove it from Continue watching until it is watched again.
@@ -1487,7 +1492,7 @@ final class FeedHome {
         TextView watch = detailsButton(app.isEmpty() ? act.getString(R.string.feed_open) : act.getString(R.string.feed_watch_on, app));
         watch.setOnClickListener(v -> {
             dialog.dismiss();
-            if (!Feed.open(act, e)) Toast.makeText(act, act.getString(R.string.cant_open, e.title), Toast.LENGTH_SHORT).show();
+            watch(e);
         });
         buttons.addView(watch, wrap());
         TextView close = detailsButton(act.getString(R.string.feed_close));
