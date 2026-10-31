@@ -168,9 +168,12 @@ final class FeedHome {
         backdrop.setVisibility(View.VISIBLE);
         scrim.setVisibility(View.VISIBLE);
         // As Apple's TV app does: a soft shade behind the header's text, from the left edge to about the middle, so the
-        // art keeps its own colours on the right; and a fade along the bottom, where the rows begin.
+        // art keeps its own colours on the right; one in the top-right corner, behind the top bar's buttons; and a fade
+        // along the bottom, where the rows begin.
         scrim.setBackground(new android.graphics.drawable.LayerDrawable(new Drawable[] {
                 new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[] {0x99080A10, 0x5C080A10, 0x00080A10, 0x00080A10}),
+                new GradientDrawable(GradientDrawable.Orientation.TR_BL,
+                        new int[] {0x99080A10, 0x40080A10, 0x00080A10, 0x00080A10, 0x00080A10}),
                 new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                         new int[] {0x00080A10, 0x00080A10, 0x00080A10, 0x26080A10, 0xE6080A10})}));
 

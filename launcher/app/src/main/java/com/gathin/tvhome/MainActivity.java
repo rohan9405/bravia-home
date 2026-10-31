@@ -2562,6 +2562,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         box.post(() -> feedHome.focusDrawer());
         View bluetooth = findViewById(R.id.btnBluetooth);
         bluetooth.setVisibility(View.VISIBLE);
+        // Dark glass on the top bar's buttons: the header's art behind them can be bright.
+        for (int id : new int[] {R.id.btnInputs, R.id.btnWifi, R.id.btnBluetooth, R.id.btnSettings}) {
+            findViewById(id).setBackgroundResource(R.drawable.pill_bg_feed);
+        }
         bluetooth.setOnClickListener(v -> {
             // Remotes & Accessories: Google TV's settings show it as a slice page, with no action of its own; the
             // Bluetooth action does not resolve on Google TV (a Sony BRAVIA BF1 answers it with nothing).
