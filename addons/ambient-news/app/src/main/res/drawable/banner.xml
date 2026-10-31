@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The TV banner: a photo frame with a headline bar. Drawn for this add-on, no third-party art. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp" android:height="180dp"
+    android:viewportWidth="320" android:viewportHeight="180">
+    <path android:fillColor="#FF14202E" android:pathData="M0,0h320v180h-320z" />
+    <path android:fillColor="#FF2E4A66" android:pathData="M70,36h180v108h-180z" />
+    <path android:fillColor="#FF5C86B0" android:pathData="M70,144l52,-58 34,38 26,-24 68,44z" />
+    <path android:fillColor="#FFF2C14E" android:pathData="M214,66m-12,0a12,12 0,1 1,24 0a12,12 0,1 1,-24 0" />
+    <path android:fillColor="#E6FFFFFF" android:pathData="M84,116h110v8h-110z M84,130h70v6h-70z" />
+</vector>

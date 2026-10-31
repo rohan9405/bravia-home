@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The app icon: a photo with a headline bar, as on the banner. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp"
+    android:viewportWidth="48" android:viewportHeight="48">
+    <path android:fillColor="#FF2E4A66" android:pathData="M6,10h36v28h-36z" />
+    <path android:fillColor="#FF5C86B0" android:pathData="M6,38l11,-13 7,8 6,-5 12,10z" />
+    <path android:fillColor="#E6FFFFFF" android:pathData="M10,30h20v3h-20z" />
+</vector>

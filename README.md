@@ -41,6 +41,17 @@ screensaver stays.
   app added in India, day by day.
 - Genre and type from OMDb or TMDB; paired genres ("Action & Adventure") merged into one name.
 
+**Ambient News** (screensaver)
+- Now and then, a news story fills the screen between Google's screensaver wallpapers, full size: the photo, topic,
+  publisher, headline, date and a QR code to read more on your phone. It never takes focus: Back closes the
+  screensaver as usual, and the story goes with it.
+- Sources: Google News (no account) and TheNewsAPI (free token), each on or off; stories without a photo at least
+  1000 px wide, or older than a day, are skipped.
+- Topics: India, World, Business & markets, Technology, Sports, Entertainment, Science and Health (the first, third
+  and fourth start on); a story every 30 s to 10 min, for 15 to 30 s, set on the TV (Apps → Ambient News).
+- Fetched on the TV every hour while its screen is on; TheNewsAPI at most 3 requests an hour (72 a day, inside its
+  free 100). No computer needed once set up.
+
 **TV clean-up**
 - Samba TV (on-screen content tracking for ads), Sony promos and Sony Select, Google feedback, demo mode and four
   preloaded apps disabled, never uninstalled ([my-tv/debloat.txt](my-tv/debloat.txt)).
@@ -53,6 +64,7 @@ screensaver stays.
  streaming apps ──(Watch Next, preview channels)──┐
  TMDB (new releases, popular, genres) ────────────┤
  JustWatch (new releases, when TMDB fails) ───────┤
+ Google News / TheNewsAPI ─── Ambient News add-on → stories between the screensaver's wallpapers
  StreamRatings shared cache → OMDb (ratings) ─────┤
                                                   ▼
                                 Feed add-on (io.github.rohan9405.feed)
@@ -68,6 +80,9 @@ screensaver stays.
 - The **Feed add-on** ([addons/tv-feed](addons/tv-feed)) holds the internet permission. It refreshes when Home
   opens and its data is older than 20 minutes, when an app joins the drawer, or when you press **Refresh now** on
   its screen (Apps → Feed). There is no background service.
+- The **Ambient News** add-on ([addons/ambient-news](addons/ambient-news)) waits for Google's screensaver and shows
+  its stories over it in a window that never takes focus (Android's overlay permission, granted once from the
+  computer). It keeps the last day's stories and their photos on the TV.
 - The **Original Home** add-on ([addons/original-home](addons/original-home)) is a tile that opens the TV's own
   home screen.
 
@@ -107,11 +122,14 @@ tools/disable.sh my-tv/debloat.txt
 STOCK_LAUNCHER=none launcher/build-and-install.sh
 tools/install-addon.sh tv-feed
 tools/install-addon.sh original-home
+tools/install-addon.sh ambient-news
+tools/venv/bin/python -I tools/tv.py 'appops set io.github.rohan9405.ambient SYSTEM_ALERT_WINDOW allow' 
 tools/venv/bin/python -I tools/tv.py 'pm grant io.github.rohan9405.feed android.permission.READ_TV_LISTINGS'
 tools/theme.sh my-tv/theme
 # 3. API keys stay on your computer (~/.cleantv-private, never in the repo) and are sent over ADB:
 my-tv/api-keys.sh save omdb      # free key from omdbapi.com
 my-tv/api-keys.sh save tmdb      # TMDB API Read Access Token, free at themoviedb.org
+my-tv/api-keys.sh save news      # optional: TheNewsAPI token, free at thenewsapi.com, for Ambient News
 my-tv/api-keys.sh send
 ```
 

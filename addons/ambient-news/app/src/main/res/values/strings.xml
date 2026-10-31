@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ambient News</string>
+    <string name="settings_title">Ambient News</string>
+    <string name="settings_intro">Now and then, a news story fills the screen between Google\'s screensaver wallpapers: the photo, the headline, the publisher and a QR code to read more. Back closes the screensaver as usual.</string>
+    <string name="row_enabled">News in the screensaver</string>
+    <string name="row_frequency">How often</string>
+    <string name="row_length">Each story stays</string>
+    <string name="row_topic_india">India</string>
+    <string name="row_topic_business">Business &amp; markets</string>
+    <string name="row_topic_tech">Technology</string>
+    <string name="row_topic_world">World</string>
+    <string name="row_topic_sports">Sports</string>
+    <string name="row_topic_entertainment">Entertainment</string>
+    <string name="row_topic_science">Science</string>
+    <string name="row_topic_health">Health</string>
+    <string name="row_preview">Start the screensaver now</string>
+    <string name="section_sources">Sources</string>
+    <string name="section_topics">Topics</string>
+    <string name="section_timing">Timing</string>
+    <string name="source_google">Google News</string>
+    <string name="source_thenews">TheNewsAPI</string>
+    <string name="no_token">no token yet (my-tv/api-keys.sh)</string>
+    <string name="gap_range">every %1$s to %2$s</string>
+    <string name="topic_business_short">Business</string>
+    <string name="scan_to_read">Scan to read more</string>
+    <string name="status_counts">%1$d stories ready: Google News %2$d, TheNewsAPI %3$d · updated %4$s</string>
+    <string name="status_none">No stories yet: they are fetched in the background, in a minute or two.</string>
+    <string name="token_saved">TheNewsAPI token saved</string>
+    <string name="on">On</string>
+    <string name="off">Off</string>
+    <string name="seconds">%1$d s</string>
+    <string name="status_no_overlay">Not allowed to draw over the screensaver yet: run the overlay step in the README from the computer.</string>
+    <string name="notification">Waiting for the screensaver</string>
+    <string name="ago_minutes">%1$d min ago</string>
+    <string name="ago_hours">%1$d h ago</string>
+</resources>

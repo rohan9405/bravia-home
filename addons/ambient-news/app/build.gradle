@@ -1,0 +1,40 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'io.github.rohan9405.ambient'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'io.github.rohan9405.ambient'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
+            // Sideloaded over ADB like the launcher: signed with the debug key.
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // QR codes for "Scan to read more" (Apache 2.0).
+    implementation 'com.google.zxing:core:3.5.3'
+    // Test only (never in the APK): plain JVM tests, src/test.
+    testImplementation 'junit:junit:4.13.2'
+    // org.json is Android's own at runtime; the JVM tests need a real one to parse TheNewsAPI's answers.
+    testImplementation 'org.json:json:20231013'
+}
