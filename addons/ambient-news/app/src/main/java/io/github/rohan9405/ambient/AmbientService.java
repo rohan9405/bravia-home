@@ -198,7 +198,7 @@ public class AmbientService extends Service {
         main.removeCallbacks(storyDone);
         art.execute(() -> {
             Bitmap photo = BitmapFactory.decodeFile(r.photo.getPath());
-            Bitmap code = qr(r.story.link, px(150));
+            Bitmap code = qr(r.story.link, px(256));
             main.post(() -> show(r.story, photo, code, index));
         });
     }
@@ -371,9 +371,9 @@ public class AmbientService extends Service {
             q.setClipToOutline(true);
             GradientDrawable white = new GradientDrawable();
             white.setColor(Color.WHITE);
-            white.setCornerRadius(px(8));
+            white.setCornerRadius(px(12));
             q.setBackground(white);
-            qr.addView(q, new LinearLayout.LayoutParams(px(64), px(64)));
+            qr.addView(q, new LinearLayout.LayoutParams(px(128), px(128)));
             TextView scan = label(10, 0xBFFFFFFF, Typeface.create("sans-serif", Typeface.NORMAL));
             scan.setText(R.string.scan_to_read);
             LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(-2, -2);
