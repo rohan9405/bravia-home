@@ -66,7 +66,7 @@ final class FeedHome {
     }
 
     private static final long TURN_MS = 8000;
-    private static final float BACKDROP_TOP = 0.75f;
+    private static final float BACKDROP_TOP = 0.85f;
     private static final float BACKDROP_SCROLLED = 0.28f;
     private static final int IMDB_YELLOW = 0xFFF5C518;
     private static final int HERO_PER_APP = 5;
@@ -169,9 +169,10 @@ final class FeedHome {
         container.setVisibility(View.VISIBLE);
         backdrop.setVisibility(View.VISIBLE);
         scrim.setVisibility(View.VISIBLE);
-        // Dark on the left, where the header's text sits, and at the bottom, where the rows go.
+        // Dark on the left, where the header's text sits (light enough to show the art; the text has a shadow), and at
+        // the bottom, where the rows go.
         scrim.setBackground(new LayerDrawable(new Drawable[] {
-                new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[] {0xF2080A10, 0xA6080A10, 0x00080A10}),
+                new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[] {0xB3080A10, 0x59080A10, 0x00080A10}),
                 new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {0x00080A10, 0x33080A10, 0xF2080A10})}));
 
         scroll = new Scroll(act, null);
@@ -211,6 +212,7 @@ final class FeedHome {
         heroKicker = text(12, 0xD9FFFFFF, medium);
         heroKicker.setAllCaps(true);
         heroKicker.setLetterSpacing(0.16f);
+        heroKicker.setShadowLayer(dp(6), 0, dp(1), 0x99000000);
         LinearLayout.LayoutParams klp = wrap();
         klp.leftMargin = dp(10);
         kickerRow.addView(heroKicker, klp);
@@ -220,6 +222,7 @@ final class FeedHome {
         heroTitle.setEllipsize(TextUtils.TruncateAt.END);
         heroTitle.setLetterSpacing(-0.01f);
         heroTitle.setIncludeFontPadding(false);
+        heroTitle.setShadowLayer(dp(10), 0, dp(1), 0x99000000);
         LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(dp(620), ViewGroup.LayoutParams.WRAP_CONTENT);
         tlp.topMargin = dp(12);
         heroBlock.addView(heroTitle, tlp);
@@ -228,6 +231,7 @@ final class FeedHome {
         heroTag = row();
         metaRow.addView(heroTag, wrap());
         heroMeta = text(14, 0xCCFFFFFF, regular);
+        heroMeta.setShadowLayer(dp(6), 0, dp(1), 0x99000000);
         LinearLayout.LayoutParams mlp = wrap();
         mlp.leftMargin = dp(12);
         metaRow.addView(heroMeta, mlp);
@@ -274,11 +278,14 @@ final class FeedHome {
         drawerBand.setGravity(Gravity.CENTER);
         drawerBand.setClipChildren(false);
         drawerBand.setClipToPadding(false);
-        drawerBand.setPadding(dp(14), dp(14), dp(14), dp(14));
-        GradientDrawable band = rounded(0x1AFFFFFF, dp(22));
+        drawerBand.setPadding(dp(10), dp(10), dp(10), dp(10));
+        GradientDrawable band = rounded(0x1AFFFFFF, dp(18));
         band.setStroke(Math.max(1, dp(1) / 2), 0x29FFFFFF);
         drawerBand.setBackground(band);
-        content.addView(drawerBand, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        // As wide as its apps, centred: the header's art shows on either side.
+        LinearLayout.LayoutParams blp = wrap();
+        blp.gravity = Gravity.CENTER_HORIZONTAL;
+        content.addView(drawerBand, blp);
         sections[S_DRAWER] = drawerBand;
 
         // 3. Continue watching.
@@ -539,16 +546,17 @@ final class FeedHome {
         feed.setDrawer(drawer);
     }
 
-    /** Every drawer app on one line: tiles up to 176 dp wide, smaller when more apps have to fit. */
+    /** Every drawer app on one line: tiles up to 136 dp wide, smaller when more apps have to fit. */
     private void buildDrawer() {
         boolean hadFocus = drawerBand.hasFocus();
         drawerBand.removeAllViews();
         int n = drawer.size();
         if (n == 0) return;
-        int width = drawerBand.getWidth() > 0 ? drawerBand.getWidth() : act.getResources().getDisplayMetrics().widthPixels - dp(120);
-        int gap = dp(14);
+        // The band wraps its tiles, so the room is the page's, not the band's.
+        int width = content.getWidth() > 0 ? content.getWidth() : act.getResources().getDisplayMetrics().widthPixels - dp(120);
+        int gap = dp(12);
         int inner = width - drawerBand.getPaddingLeft() - drawerBand.getPaddingRight();
-        int w = Math.min(dp(176), (inner - gap * (n - 1)) / n);
+        int w = Math.min(dp(136), (inner - gap * (n - 1)) / n);
         int h = w * 9 / 16;
         for (int i = 0; i < n; i++) {
             App a = apps.get(drawer.get(i));
