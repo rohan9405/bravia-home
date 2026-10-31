@@ -32,11 +32,52 @@ final class Insights {
     private static final ExecutorService ONE = Executors.newSingleThreadExecutor();
     private static final AtomicBoolean RUNNING = new AtomicBoolean();
 
+    /** Seconds between the chip's turns, as offered on the Feed screen. */
+    static final int[] ROTATIONS = {10, 20, 30, 60};
+
     private Insights() {
     }
 
-    /** The saved card data, or {"status":"none"} before INDmoney was ever connected. */
+    /** The Feed screen's settings for the chip: on Home at all, the portfolio shown, and how often it turns. */
+    static android.content.SharedPreferences settings(Context ctx) {
+        return ctx.getSharedPreferences("insights", Context.MODE_PRIVATE);
+    }
+
+    static boolean chipOn(Context ctx) {
+        return settings(ctx).getBoolean("chip", true);
+    }
+
+    static boolean portfolioOn(Context ctx) {
+        return settings(ctx).getBoolean("portfolio", true);
+    }
+
+    static int rotationSec(Context ctx) {
+        return settings(ctx).getInt("rotation", 30);
+    }
+
+    /** A setting changed: Home hears it at once; showing the portfolio again fetches it. */
+    static void changed(Context ctx) {
+        ctx.getContentResolver().notifyChange(FeedProvider.insightsUri(), null);
+        if (portfolioOn(ctx)) kick(ctx);
+    }
+
+    /**
+     * What Home gets: the saved figures (without the portfolio when it is hidden) and the chip's settings; {"status":
+     * "none"} before INDmoney was ever connected.
+     */
     static String json(Context ctx) {
+        JSONObject o;
+        try {
+            o = new JSONObject(saved(ctx));
+            if (!portfolioOn(ctx)) o.remove("portfolio");
+            o.put("chip", chipOn(ctx)).put("rotation", rotationSec(ctx));
+        } catch (JSONException e) {
+            return "{\"status\":\"none\"}";
+        }
+        return o.toString();
+    }
+
+    private static String saved(Context ctx) {
         try (InputStream in = new FileInputStream(file(ctx))) {
             return new String(Net.read(in, 1 << 20), StandardCharsets.UTF_8);
         } catch (IOException e) {
@@ -46,10 +87,10 @@ final class Insights {
 
     /** Fetches in the background when the saved data is older than {@link #maxAgeMs}; Home hears when it is stored. */
     static void refreshIfStale(Context ctx) {
-        if (!new Indmoney(ctx).paired()) return;
+        if (!new Indmoney(ctx).paired() || !chipOn(ctx)) return;
         long updated = 0;
         try {
-            updated = new JSONObject(json(ctx)).optLong("tried");
+            updated = new JSONObject(saved(ctx)).optLong("tried");
         } catch (JSONException ignored) {
             // Fetch.
         }
@@ -82,15 +123,18 @@ final class Insights {
         long now = System.currentTimeMillis();
         JSONObject last;
         try {
-            last = new JSONObject(json(ctx));
+            last = new JSONObject(saved(ctx));
         } catch (JSONException e) {
             last = new JSONObject();
         }
         Indmoney im = new Indmoney(ctx);
         try {
-            JSONObject mf = im.tool("networth_holdings", new JSONObject().put("asset_type", "MF"));
-            JSONObject in = im.tool("networth_holdings", new JSONObject().put("asset_type", "IND_STOCK"));
-            JSONObject us = im.tool("networth_holdings", new JSONObject().put("asset_type", "US_STOCK"));
+            // With the portfolio hidden, the holdings are not even fetched: only the indices.
+            boolean portfolio = portfolioOn(ctx);
+            JSONObject none = new JSONObject();
+            JSONObject mf = portfolio ? im.tool("networth_holdings", new JSONObject().put("asset_type", "MF")) : none;
+            JSONObject in = portfolio ? im.tool("networth_holdings", new JSONObject().put("asset_type", "IND_STOCK")) : none;
+            JSONObject us = portfolio ? im.tool("networth_holdings", new JSONObject().put("asset_type", "US_STOCK")) : none;
             JSONObject idx = im.tool("get_indian_stocks_details", new JSONObject().put("ind_keys", new JSONArray().put(NIFTY).put(SENSEX)));
             JSONObject out = compose(mf, in, us, idx);
             return out.put("status", "ok").put("updated", now).put("tried", now);

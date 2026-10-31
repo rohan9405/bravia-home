@@ -26,12 +26,13 @@ import java.util.Date;
 import java.util.Locale;
 
 /**
- * The insight chip beside the date: today's change on the INDmoney portfolio, then Nifty 50, then Sensex, one at a
- * time, taking turns every 30 seconds (still while focused). OK opens the details. The Feed add-on fetches the figures; this only shows
- * them, with their time, and never shows a missing figure as zero.
+ * The insight chip beside the date: today's change on the INDmoney portfolio, then NIFTY, then SENSEX, one at a time,
+ * turning every 30 seconds (still while focused). OK opens the details. The Feed add-on fetches the figures and holds
+ * the Feed screen's settings (the chip on or off, the portfolio shown or only the indices, how often it turns); this
+ * only shows them, with their time, and never shows a missing figure as zero.
  */
 final class InsightCard {
-    private static final long TURN_MS = 30_000;
+    private long turnMs = 30_000;
     private static final int UP = 0xFF6EE7A0, DOWN = 0xFFFF8A80;
 
     private final Activity act;
@@ -40,16 +41,16 @@ final class InsightCard {
     private final TextView label, value;
     private final float d;
     private JSONObject data = new JSONObject();
-    /** 0: the portfolio; 1, 2: the indices. */
+    /** Which view is showing: the portfolio (when shown) first, then each index. */
     private int step;
     private final Runnable turn = new Runnable() {
         @Override
         public void run() {
             if (!chip.hasFocus()) {
-                step = (step + 1) % 3;
+                step++;
                 paint();
             }
-            handler.postDelayed(this, TURN_MS);
+            handler.postDelayed(this, turnMs);
         }
     };
 
@@ -67,6 +68,7 @@ final class InsightCard {
         chip.setVisibility(View.GONE);
         label = text(11, 0xB3FFFFFF, Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
         label.setLetterSpacing(0.14f);
+        label.setAllCaps(true);
         chip.addView(label);
         value = text(15, Color.WHITE, Typeface.DEFAULT);
         LinearLayout.LayoutParams vl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -99,7 +101,7 @@ final class InsightCard {
         lp.leftMargin = dp(22);
         lp.bottomMargin = dp(4);
         clockRow.addView(chip, lp);
-        handler.postDelayed(turn, TURN_MS);
+        handler.postDelayed(turn, turnMs);
     }
 
     boolean focusable() {
@@ -119,7 +121,15 @@ final class InsightCard {
         }
         String status = data.optString("status");
         boolean any = data.has("portfolio") || data.optJSONArray("markets") != null && data.optJSONArray("markets").length() > 0;
-        chip.setVisibility(any || "reconnect".equals(status) ? View.VISIBLE : View.GONE);
+        boolean on = data.optBoolean("chip", true) && (any || "reconnect".equals(status));
+        if (!on && chip.hasFocus()) chip.focusSearch(View.FOCUS_RIGHT);
+        chip.setVisibility(on ? View.VISIBLE : View.GONE);
+        long ms = 1000L * Math.max(5, data.optInt("rotation", 30));
+        if (ms != turnMs) {
+            turnMs = ms;
+            handler.removeCallbacks(turn);
+            handler.postDelayed(turn, turnMs);
+        }
         paint();
     }
 
@@ -138,11 +148,12 @@ final class InsightCard {
             value.setTextColor(plain);
             return;
         }
-        JSONObject index = m == null || step == 0 ? null : m.optJSONObject(step - 1);
-        if (index == null && p == null && m != null) index = m.optJSONObject(0);
+        int views = (p != null ? 1 : 0) + (m == null ? 0 : m.length());
+        int at = step % Math.max(1, views);
+        JSONObject index = p != null && at == 0 || m == null ? null : m.optJSONObject(at - (p != null ? 1 : 0));
         double c;
         if (index != null) {
-            label.setText(index.optString("name").toUpperCase(Locale.ROOT));
+            label.setText(indexName(index.optString("name")));
             c = index.optDouble("change");
             value.setText(level(index.optDouble("price")) + "   " + arrow(c) + pct(index.optDouble("pct")));
         } else {
@@ -191,7 +202,7 @@ final class InsightCard {
                 JSONObject x = m.optJSONObject(i);
                 if (x == null) continue;
                 LinearLayout line = line(box);
-                cell(line, x.optString("name"), 150, Color.WHITE, Gravity.START);
+                cell(line, indexName(x.optString("name")), 150, Color.WHITE, Gravity.START);
                 cell(line, level(x.optDouble("price")), 110, Color.WHITE, Gravity.END);
                 double c = x.optDouble("change");
                 cell(line, arrow(c) + level(Math.abs(c)) + "  " + pct(x.optDouble("pct")), 150, c < 0 ? DOWN : UP, Gravity.END);
@@ -205,7 +216,7 @@ final class InsightCard {
             box.addView(r, new LinearLayout.LayoutParams(dp(560), ViewGroup.LayoutParams.WRAP_CONTENT));
         }
         TextView src = text(11, 0x66FFFFFF, Typeface.DEFAULT);
-        src.setText(R.string.insight_source);
+        src.setText(p != null ? R.string.insight_source : R.string.insight_source_markets);
         src.setPadding(0, dp(14), 0, 0);
         box.addView(src);
         dialog.setContentView(box);
@@ -277,6 +288,12 @@ final class InsightCard {
             case "us": return act.getString(R.string.insight_us);
             default: return fallback;
         }
+    }
+
+    /** "NIFTY" for NIFTY 50; others as INDmoney names them, in capitals. */
+    private static String indexName(String name) {
+        String n = name.toUpperCase(Locale.ROOT);
+        return n.startsWith("NIFTY 50") ? "NIFTY" : n;
     }
 
     private static String arrow(double v) {

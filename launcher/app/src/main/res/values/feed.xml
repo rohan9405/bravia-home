@@ -58,5 +58,6 @@
     <string name="insight_prices_at">prices as of %1$s</string>
     <string name="insight_stale">couldn\'t refresh, showing the last figures</string>
     <string name="insight_reconnect_help">INDmoney asks for a new sign-in. Sign in again on the computer (my-tv/indmoney-signin.py), then run my-tv/indmoney-pair.sh.</string>
+    <string name="insight_source_markets">From INDmoney, read-only.</string>
     <string name="insight_source">From INDmoney, read-only. Each class\'s day is INDmoney\'s own; the total is their sum.</string>
 </resources>

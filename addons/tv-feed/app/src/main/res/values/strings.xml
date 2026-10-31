@@ -4,4 +4,10 @@
     <string name="continue_watching">Continue watching</string>
     <string name="refresh">Refresh now</string>
     <string name="grant">Allow reading TV rows</string>
+    <string name="chip_section">HOME INSIGHT CHIP (INDMONEY)</string>
+    <string name="chip_on">Chip: %1$s</string>
+    <string name="chip_portfolio">Portfolio: %1$s</string>
+    <string name="chip_rotation">Turns every %1$d s</string>
+    <string name="on">On</string>
+    <string name="off">Off</string>
 </resources>

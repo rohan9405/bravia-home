@@ -42,12 +42,16 @@ screensaver stays.
 - Genre and type from OMDb or TMDB; paired genres ("Action & Adventure") merged into one name.
 
 **Insight chip** (top bar, beside the date)
-- Today's change on your INDmoney portfolio (▲ ₹6,965 +0.05%), then Nifty 50, then Sensex, one at a time every 30 s.
+- Today's change on your INDmoney portfolio (PORTFOLIO ▲ ₹6,965 +0.05%), then NIFTY, then SENSEX, one at a time.
   OK opens the details: each class (mutual funds, Indian stocks, US stocks) with today's change and value, and both
   indices with their previous close and quote time.
 - Read-only, from INDmoney's official MCP server, by the TV itself: you sign in once on the computer and hand the
   sign-in to the TV, which renews it on its own (the computer can stay off). Fetched every 15 minutes while India's
   market is open, hourly otherwise; a missing figure is left out, never shown as zero.
+- Settings on the Feed screen (Apps → Feed): the chip on or off, the portfolio shown or hidden (hidden, it is not
+  even fetched, and the chip and details show only NIFTY and SENSEX), and how often it turns (10 to 60 s).
+- Your sign-in and keys stay on your TV and your computer (`~/.cleantv-private`), never in this repository: each
+  person signs in with their own INDmoney account, and adds their own TheNewsAPI token if they want it.
 
 **Ambient News** (screensaver)
 - Now and then, a news story fills the screen between Google's screensaver wallpapers, full size: the photo, topic,

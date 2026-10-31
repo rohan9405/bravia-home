@@ -61,6 +61,42 @@ public final class FeedActivity extends Activity {
         }
         col.addView(buttons);
 
+        // Home's insight chip (INDmoney): on or off, the portfolio shown or only the indices, how often it turns.
+        TextView chipTitle = text(13, 0x99FFFFFF);
+        chipTitle.setText(R.string.chip_section);
+        chipTitle.setPadding(0, (int) (16 * d), 0, (int) (4 * d));
+        col.addView(chipTitle);
+        LinearLayout chipRow = new LinearLayout(this);
+        chipRow.setOrientation(LinearLayout.HORIZONTAL);
+        Button chip = new Button(this), portfolio = new Button(this), rotation = new Button(this);
+        Runnable label = () -> {
+            chip.setText(getString(R.string.chip_on, getString(Insights.chipOn(this) ? R.string.on : R.string.off)));
+            portfolio.setText(getString(R.string.chip_portfolio, getString(Insights.portfolioOn(this) ? R.string.on : R.string.off)));
+            rotation.setText(getString(R.string.chip_rotation, Insights.rotationSec(this)));
+        };
+        chip.setOnClickListener(v -> {
+            Insights.settings(this).edit().putBoolean("chip", !Insights.chipOn(this)).apply();
+            label.run();
+            Insights.changed(this);
+        });
+        portfolio.setOnClickListener(v -> {
+            Insights.settings(this).edit().putBoolean("portfolio", !Insights.portfolioOn(this)).apply();
+            label.run();
+            Insights.changed(this);
+        });
+        rotation.setOnClickListener(v -> {
+            int i = 0;
+            while (i < Insights.ROTATIONS.length && Insights.ROTATIONS[i] != Insights.rotationSec(this)) i++;
+            Insights.settings(this).edit().putInt("rotation", Insights.ROTATIONS[(i + 1) % Insights.ROTATIONS.length]).apply();
+            label.run();
+            Insights.changed(this);
+        });
+        label.run();
+        chipRow.addView(chip);
+        chipRow.addView(portfolio);
+        chipRow.addView(rotation);
+        col.addView(chipRow);
+
         status = text(15, 0xCCFFFFFF);
         status.setPadding(0, (int) (16 * d), 0, 0);
         status.setLineSpacing(4 * d, 1f);
