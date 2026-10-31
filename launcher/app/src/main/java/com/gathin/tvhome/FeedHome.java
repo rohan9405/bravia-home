@@ -102,8 +102,8 @@ final class FeedHome {
     private final LinearLayout content;
     private final LinearLayout heroBlock;
     private final ImageView heroLogo;
-    private final TextView heroKicker, heroTitle, heroMeta, heroAction, heroMore;
-    /** Watch and the hold-OK hint for Read more, shown while the header has focus. */
+    private final TextView heroTitle, heroMeta, heroAction;
+    /** Watch, shown while the header has focus (holding OK opens Read more). */
     private final LinearLayout heroButtons;
     private final LinearLayout heroTag;
     private final LinearLayout heroDots;
@@ -167,9 +167,12 @@ final class FeedHome {
         container.setVisibility(View.VISIBLE);
         backdrop.setVisibility(View.VISIBLE);
         scrim.setVisibility(View.VISIBLE);
-        // The header's art as it is (its text carries a shadow); only the bottom quarter fades, where the rows begin.
-        scrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[] {0x00080A10, 0x00080A10, 0x00080A10, 0x00080A10, 0xE6080A10}));
+        // As Apple's TV app does: a soft shade behind the header's text, from the left edge to about the middle, so the
+        // art keeps its own colours on the right; and a fade along the bottom, where the rows begin.
+        scrim.setBackground(new android.graphics.drawable.LayerDrawable(new Drawable[] {
+                new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[] {0x99080A10, 0x5C080A10, 0x00080A10, 0x00080A10}),
+                new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                        new int[] {0x00080A10, 0x00080A10, 0x00080A10, 0x26080A10, 0xE6080A10})}));
 
         scroll = new Scroll(act, null);
         scroll.setVerticalScrollBarEnabled(false);
@@ -198,34 +201,26 @@ final class FeedHome {
         heroBlock = column();
         heroBlock.setGravity(Gravity.BOTTOM);
         heroBlock.setPadding(dp(8), 0, 0, dp(18));
-        LinearLayout kickerRow = row();
-        kickerRow.setGravity(Gravity.CENTER_VERTICAL);
-        heroLogo = new ImageView(act);
-        heroLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        heroLogo.setClipToOutline(true);
-        heroLogo.setBackground(rounded(0x00000000, dp(6)));
-        kickerRow.addView(heroLogo, new LinearLayout.LayoutParams(dp(26), dp(26)));
-        heroKicker = text(12, 0xD9FFFFFF, medium);
-        heroKicker.setAllCaps(true);
-        heroKicker.setLetterSpacing(0.16f);
-        heroKicker.setShadowLayer(dp(6), 0, dp(1), 0x99000000);
-        LinearLayout.LayoutParams klp = wrap();
-        klp.leftMargin = dp(10);
-        kickerRow.addView(heroKicker, klp);
-        heroBlock.addView(kickerRow, wrap());
         heroTitle = text(36, Color.WHITE, light);
         heroTitle.setSingleLine(true);
         heroTitle.setEllipsize(TextUtils.TruncateAt.END);
         heroTitle.setLetterSpacing(-0.01f);
         heroTitle.setIncludeFontPadding(false);
         heroTitle.setShadowLayer(dp(10), 0, dp(1), 0x99000000);
-        LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(dp(620), ViewGroup.LayoutParams.WRAP_CONTENT);
-        tlp.topMargin = dp(12);
-        heroBlock.addView(heroTitle, tlp);
+        heroBlock.addView(heroTitle, new LinearLayout.LayoutParams(dp(620), ViewGroup.LayoutParams.WRAP_CONTENT));
+        // The app's logo, then the IMDb tag, then year · genres · season: the logo says where it streams.
         LinearLayout metaRow = row();
         metaRow.setGravity(Gravity.CENTER_VERTICAL);
+        heroLogo = new ImageView(act);
+        heroLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        heroLogo.setClipToOutline(true);
+        heroLogo.setBackground(rounded(0x00000000, dp(5)));
+        heroLogo.setElevation(dp(2));
+        metaRow.addView(heroLogo, new LinearLayout.LayoutParams(dp(24), dp(24)));
         heroTag = row();
-        metaRow.addView(heroTag, wrap());
+        LinearLayout.LayoutParams glp = wrap();
+        glp.leftMargin = dp(10);
+        metaRow.addView(heroTag, glp);
         heroMeta = text(14, 0xCCFFFFFF, regular);
         heroMeta.setShadowLayer(dp(6), 0, dp(1), 0x99000000);
         LinearLayout.LayoutParams mlp = wrap();
@@ -241,15 +236,6 @@ final class FeedHome {
         heroAction.setBackground(rounded(0xF2FFFFFF, dp(18)));
         heroAction.setPadding(dp(16), dp(7), dp(18), dp(7));
         heroButtons.addView(heroAction, wrap());
-        heroMore = text(14, Color.WHITE, medium);
-        heroMore.setText(R.string.feed_hold_read_more);
-        heroMore.setPadding(dp(16), dp(7), dp(16), dp(7));
-        GradientDrawable hint = rounded(0x33000000, dp(18));
-        hint.setStroke(Math.max(1, dp(1) / 2), 0x40FFFFFF);
-        heroMore.setBackground(hint);
-        LinearLayout.LayoutParams mbl = wrap();
-        mbl.leftMargin = dp(10);
-        heroButtons.addView(heroMore, mbl);
         LinearLayout.LayoutParams alp = wrap();
         alp.topMargin = dp(16);
         heroBlock.addView(heroButtons, alp);
@@ -286,9 +272,7 @@ final class FeedHome {
         drawerBand.setClipChildren(false);
         drawerBand.setClipToPadding(false);
         drawerBand.setPadding(dp(10), dp(10), dp(10), dp(10));
-        GradientDrawable band = rounded(0x1AFFFFFF, dp(18));
-        band.setStroke(Math.max(1, dp(1) / 2), 0x29FFFFFF);
-        drawerBand.setBackground(band);
+        drawerBand.setBackground(new GlassBand(dp(18), dp(24), dp(8), Math.max(1, dp(1) / 2)));
         // As wide as its apps, centred: the header's art shows on either side.
         LinearLayout.LayoutParams blp = wrap();
         blp.gravity = Gravity.CENTER_HORIZONTAL;
@@ -1162,13 +1146,13 @@ final class FeedHome {
         heroLogo.setImageDrawable(a == null ? null : a.icon);
         heroLogo.setVisibility(a == null ? View.GONE : View.VISIBLE);
         String app = a == null ? "" : a.label;
-        heroKicker.setText(app);
         heroAction.setText(app.isEmpty() ? act.getString(R.string.feed_open) : act.getString(R.string.feed_watch_on, app));
         heroTitle.setText(e.title);
         heroTag.removeAllViews();
         if (!e.rating.isEmpty()) imdbTag(heroTag, e.rating, false);
-        // Brand-new titles often have no rating yet: the type and year then start where the tag would have.
-        ((LinearLayout.LayoutParams) heroMeta.getLayoutParams()).leftMargin = e.rating.isEmpty() ? 0 : dp(12);
+        // Brand-new titles often have no rating yet: the year then follows the logo where the tag would have.
+        heroTag.setVisibility(e.rating.isEmpty() ? View.GONE : View.VISIBLE);
+        ((LinearLayout.LayoutParams) heroMeta.getLayoutParams()).leftMargin = dp(10);
         heroMeta.requestLayout();
         // After the IMDb tag: year, genres, and the season for a series that counts as new because of it.
         List<String> meta = new ArrayList<>();
@@ -1619,6 +1603,56 @@ final class FeedHome {
         });
         b.getOnFocusChangeListener().onFocusChange(b, false);
         return b;
+    }
+
+    /**
+     * The drawer's panel: nearly clear glass with a thin light edge and a soft shadow around it. The shadow is drawn
+     * outside the panel only, so the glass stays see-through; the parent lets children draw past their bounds.
+     */
+    private static final class GlassBand extends Drawable {
+        private final float radius;
+        private final android.graphics.Paint shadow = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Paint fill = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Paint edge = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Path outline = new android.graphics.Path();
+        private final android.graphics.RectF box = new android.graphics.RectF();
+
+        GlassBand(float radius, float blur, float drop, float stroke) {
+            this.radius = radius;
+            shadow.setColor(0xFF000000);
+            shadow.setShadowLayer(blur, 0, drop, 0xA6000000);
+            fill.setColor(0x0FFFFFFF);
+            edge.setStyle(android.graphics.Paint.Style.STROKE);
+            edge.setStrokeWidth(stroke);
+            edge.setColor(0x38FFFFFF);
+        }
+
+        @Override
+        public void draw(@NonNull android.graphics.Canvas canvas) {
+            box.set(getBounds());
+            outline.reset();
+            outline.addRoundRect(box, radius, radius, android.graphics.Path.Direction.CW);
+            canvas.save();
+            canvas.clipOutPath(outline);
+            canvas.drawRoundRect(box, radius, radius, shadow);
+            canvas.restore();
+            canvas.drawRoundRect(box, radius, radius, fill);
+            canvas.drawRoundRect(box, radius, radius, edge);
+        }
+
+        @Override
+        public void setAlpha(int alpha) {
+            fill.setAlpha(alpha);
+        }
+
+        @Override
+        public void setColorFilter(android.graphics.ColorFilter filter) {
+        }
+
+        @Override
+        public int getOpacity() {
+            return android.graphics.PixelFormat.TRANSLUCENT;
+        }
     }
 
     private void menu(String title, String[] labels, Runnable[] actions) {
