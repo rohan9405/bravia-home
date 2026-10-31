@@ -2562,7 +2562,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         box.post(() -> feedHome.focusDrawer());
         View bluetooth = findViewById(R.id.btnBluetooth);
         bluetooth.setVisibility(View.VISIBLE);
-        // Dark glass on the top bar's buttons: the header's art behind them can be bright.
+        // Liquid glass over a faint dark base on the top bar's buttons: the header's art behind them can be bright.
         for (int id : new int[] {R.id.btnInputs, R.id.btnWifi, R.id.btnBluetooth, R.id.btnSettings}) {
             findViewById(id).setBackgroundResource(R.drawable.pill_bg_feed);
         }
