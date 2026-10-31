@@ -14,7 +14,6 @@ import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.LayerDrawable;
 import android.net.Uri;
 import android.os.Handler;
 import android.provider.Settings;
@@ -66,7 +65,7 @@ final class FeedHome {
     }
 
     private static final long TURN_MS = 8000;
-    private static final float BACKDROP_TOP = 0.85f;
+    private static final float BACKDROP_TOP = 1f;
     private static final float BACKDROP_SCROLLED = 0.28f;
     private static final int IMDB_YELLOW = 0xFFF5C518;
     private static final int HERO_PER_APP = 5;
@@ -104,9 +103,8 @@ final class FeedHome {
     private final LinearLayout heroBlock;
     private final ImageView heroLogo;
     private final TextView heroKicker, heroTitle, heroMeta, heroAction, heroMore;
-    /** The header's two buttons, shown while it has focus; which one Left and Right are on (0 Watch, 1 Read more). */
+    /** Watch and the hold-OK hint for Read more, shown while the header has focus. */
     private final LinearLayout heroButtons;
-    private int heroButton;
     private final LinearLayout heroTag;
     private final LinearLayout heroDots;
     private final LinearLayout drawerBand;
@@ -169,11 +167,9 @@ final class FeedHome {
         container.setVisibility(View.VISIBLE);
         backdrop.setVisibility(View.VISIBLE);
         scrim.setVisibility(View.VISIBLE);
-        // Dark on the left, where the header's text sits (light enough to show the art; the text has a shadow), and at
-        // the bottom, where the rows go.
-        scrim.setBackground(new LayerDrawable(new Drawable[] {
-                new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[] {0xB3080A10, 0x59080A10, 0x00080A10}),
-                new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {0x00080A10, 0x33080A10, 0xF2080A10})}));
+        // The header's art as it is (its text carries a shadow); only the bottom quarter fades, where the rows begin.
+        scrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[] {0x00080A10, 0x00080A10, 0x00080A10, 0x00080A10, 0xE6080A10}));
 
         scroll = new Scroll(act, null);
         scroll.setVerticalScrollBarEnabled(false);
@@ -242,23 +238,34 @@ final class FeedHome {
         heroButtons = row();
         heroButtons.setVisibility(View.GONE);
         heroAction = text(14, 0xFF0B0D12, medium);
+        heroAction.setBackground(rounded(0xF2FFFFFF, dp(18)));
         heroAction.setPadding(dp(16), dp(7), dp(18), dp(7));
         heroButtons.addView(heroAction, wrap());
         heroMore = text(14, Color.WHITE, medium);
-        heroMore.setText(R.string.feed_read_more);
+        heroMore.setText(R.string.feed_hold_read_more);
         heroMore.setPadding(dp(16), dp(7), dp(16), dp(7));
+        GradientDrawable hint = rounded(0x33000000, dp(18));
+        hint.setStroke(Math.max(1, dp(1) / 2), 0x40FFFFFF);
+        heroMore.setBackground(hint);
         LinearLayout.LayoutParams mbl = wrap();
         mbl.leftMargin = dp(10);
         heroButtons.addView(heroMore, mbl);
         LinearLayout.LayoutParams alp = wrap();
         alp.topMargin = dp(16);
         heroBlock.addView(heroButtons, alp);
-        // The header is a carousel with two buttons: Left and Right move between Watch and Read more, and past either
-        // one turn the carousel (round and round); OK presses the button, Down goes to the drawer.
+        // The header is a carousel: Left and Right turn it in one press (round and round), OK watches, holding OK opens
+        // Read more (the drawer's hold-OK gesture), Down goes to the drawer.
         heroBlock.setFocusable(true);
+        heroBlock.setOnClickListener(v -> {
+            if (heroTurn < 0 || heroTurn >= heroes.size()) return;
+            Feed.Entry h = heroes.get(heroTurn);
+            if (!Feed.open(act, h)) Toast.makeText(act, act.getString(R.string.cant_open, h.title), Toast.LENGTH_SHORT).show();
+        });
+        heroBlock.setOnLongClickListener(v -> {
+            if (heroTurn >= 0 && heroTurn < heroes.size()) showDetails(heroes.get(heroTurn));
+            return true;
+        });
         heroBlock.setOnFocusChangeListener((v, has) -> {
-            heroButton = 0;
-            paintHeroButtons();
             heroButtons.setVisibility(has ? View.VISIBLE : View.GONE);
             handler.removeCallbacks(turn);
             if (!has && heroes.size() > 1) handler.postDelayed(turn, TURN_MS);
@@ -546,7 +553,7 @@ final class FeedHome {
         feed.setDrawer(drawer);
     }
 
-    /** Every drawer app on one line: tiles up to 136 dp wide, smaller when more apps have to fit. */
+    /** Every drawer app on one line: tiles up to 112 dp wide, smaller when more apps have to fit. */
     private void buildDrawer() {
         boolean hadFocus = drawerBand.hasFocus();
         drawerBand.removeAllViews();
@@ -556,7 +563,7 @@ final class FeedHome {
         int width = content.getWidth() > 0 ? content.getWidth() : act.getResources().getDisplayMetrics().widthPixels - dp(120);
         int gap = dp(12);
         int inner = width - drawerBand.getPaddingLeft() - drawerBand.getPaddingRight();
-        int w = Math.min(dp(136), (inner - gap * (n - 1)) / n);
+        int w = Math.min(dp(112), (inner - gap * (n - 1)) / n);
         int h = w * 9 / 16;
         for (int i = 0; i < n; i++) {
             App a = apps.get(drawer.get(i));
@@ -1172,17 +1179,6 @@ final class FeedHome {
         heroMeta.setText(TextUtils.join("  ·  ", meta));
     }
 
-    /** The button Left and Right are on is white; the other is glass. */
-    private void paintHeroButtons() {
-        TextView[] buttons = {heroAction, heroMore};
-        for (int i = 0; i < buttons.length; i++) {
-            boolean on = i == heroButton;
-            GradientDrawable bg = rounded(on ? 0xF2FFFFFF : 0x29FFFFFF, dp(18));
-            if (!on) bg.setStroke(Math.max(1, dp(1) / 2), 0x40FFFFFF);
-            buttons[i].setBackground(bg);
-            buttons[i].setTextColor(on ? 0xFF0B0D12 : Color.WHITE);
-        }
-    }
 
     private void showBackdrop(String source, Bitmap b) {
         if (!source.equals(backdropSource)) return;
@@ -1257,18 +1253,10 @@ final class FeedHome {
         if (e.getAction() != KeyEvent.ACTION_DOWN) return false;
         switch (key) {
             case KeyEvent.KEYCODE_DPAD_LEFT:
-                if (heroButton == 1) heroButton = 0;
-                else stepHero(-1);
-                paintHeroButtons();
+                stepHero(-1);
                 return true;
             case KeyEvent.KEYCODE_DPAD_RIGHT:
-                if (heroButton == 0) {
-                    heroButton = 1;
-                } else {
-                    heroButton = 0;
-                    stepHero(1);
-                }
-                paintHeroButtons();
+                stepHero(1);
                 return true;
             case KeyEvent.KEYCODE_DPAD_UP:
                 host.onUp();
@@ -1276,15 +1264,8 @@ final class FeedHome {
             case KeyEvent.KEYCODE_DPAD_DOWN:
                 focusDrawer();
                 return true;
-            case KeyEvent.KEYCODE_DPAD_CENTER:
-            case KeyEvent.KEYCODE_ENTER:
-                if (heroTurn >= 0 && heroTurn < heroes.size()) {
-                    Feed.Entry h = heroes.get(heroTurn);
-                    if (heroButton == 1) showDetails(h);
-                    else if (!Feed.open(act, h)) Toast.makeText(act, act.getString(R.string.cant_open, h.title), Toast.LENGTH_SHORT).show();
-                }
-                return true;
             default:
+                // OK and Enter go to the view: a press watches, a hold opens Read more.
                 return false;
         }
     }

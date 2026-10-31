@@ -21,7 +21,7 @@
     <!-- Under the date: the Feed add-on's refresh. -->
     <string name="feed_refreshing">Refreshing · %1$d%%</string>
     <!-- The header's Read more popup. -->
-    <string name="feed_read_more">Read more</string>
+    <string name="feed_hold_read_more">Hold OK · Read more</string>
     <string name="feed_close">Close</string>
     <string name="feed_loading_details">Loading cast and details…</string>
     <string name="feed_no_details">No more details for this title right now.</string>
