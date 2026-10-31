@@ -107,6 +107,13 @@ final class Feed {
         void onStatus(int progress, long refreshedMs);
     }
     private StatusListener statusListener;
+    private final Uri insightsUri;
+    private final ContentObserver insightsObserver;
+    /** The insight chip's figures, as the add-on's JSON. */
+    interface InsightsListener {
+        void onInsights(String json);
+    }
+    private InsightsListener insightsListener;
     /** Decoded art, in RGB_565: a tile is about 160 KB, so this holds a screen of rows and a few backdrops. */
     private final LruCache<String, Bitmap> art = new LruCache<String, Bitmap>(16 * 1024 * 1024) {
         @Override
@@ -134,6 +141,13 @@ final class Feed {
             }
         };
         statusUri = uri.buildUpon().path("status").build();
+        insightsUri = uri.buildUpon().path("insights").build();
+        insightsObserver = new ContentObserver(main) {
+            @Override
+            public void onChange(boolean selfChange) {
+                readInsights();
+            }
+        };
         statusObserver = new ContentObserver(main) {
             @Override
             public void onChange(boolean selfChange) {
@@ -173,6 +187,31 @@ final class Feed {
         statusListener = l;
     }
 
+    void setInsightsListener(InsightsListener l) {
+        insightsListener = l;
+    }
+
+    /** The add-on's insights (it fetches them when they are old); an add-on without them answers nothing. */
+    private void readInsights() {
+        if (insightsListener == null) return;
+        try {
+            io.execute(() -> {
+                String json;
+                try (Cursor c = ctx.getContentResolver().query(insightsUri, null, null, null, null)) {
+                    if (c == null || !c.moveToFirst()) return;
+                    json = s(c, "json");
+                } catch (RuntimeException gone) {
+                    return;
+                }
+                main.post(() -> {
+                    if (insightsListener != null) insightsListener.onInsights(json);
+                });
+            });
+        } catch (RejectedExecutionException shutDown) {
+            // Home is being destroyed.
+        }
+    }
+
     /** An add-on from before the status existed answers nothing: the listener is not called. */
     private void readStatus() {
         try {
@@ -200,6 +239,7 @@ final class Feed {
         if (!watching) {
             try {
                 ctx.getContentResolver().registerContentObserver(statusUri, false, statusObserver);
+                ctx.getContentResolver().registerContentObserver(insightsUri, false, insightsObserver);
                 ctx.getContentResolver().registerContentObserver(uri, false, observer);
                 watching = true;
             } catch (SecurityException e) {
@@ -208,12 +248,14 @@ final class Feed {
         }
         read();
         readStatus();
+        readInsights();
     }
 
     void stop() {
         if (watching) {
             ctx.getContentResolver().unregisterContentObserver(observer);
             ctx.getContentResolver().unregisterContentObserver(statusObserver);
+            ctx.getContentResolver().unregisterContentObserver(insightsObserver);
         }
         watching = false;
     }

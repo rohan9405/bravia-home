@@ -43,4 +43,20 @@
         <item quantity="one">%d episode</item>
         <item quantity="other">%d episodes</item>
     </plurals>
+    <!-- The insight chip beside the date and its details (INDmoney). -->
+    <string name="insight_portfolio">Portfolio</string>
+    <string name="insight_markets">Markets</string>
+    <string name="insight_indmoney">INDmoney</string>
+    <string name="insight_reconnect">Reconnect</string>
+    <string name="insight_title">Today</string>
+    <string name="insight_total">Total</string>
+    <string name="insight_mf">Mutual funds</string>
+    <string name="insight_in">Indian stocks</string>
+    <string name="insight_us">US stocks</string>
+    <string name="insight_prev">prev %1$s</string>
+    <string name="insight_updated">Updated %1$s</string>
+    <string name="insight_prices_at">prices as of %1$s</string>
+    <string name="insight_stale">couldn\'t refresh, showing the last figures</string>
+    <string name="insight_reconnect_help">INDmoney asks for a new sign-in. Sign in again on the computer (my-tv/indmoney-signin.py), then run my-tv/indmoney-pair.sh.</string>
+    <string name="insight_source">From INDmoney, read-only. Each class\'s day is INDmoney\'s own; the total is their sum.</string>
 </resources>

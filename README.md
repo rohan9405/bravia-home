@@ -41,6 +41,14 @@ screensaver stays.
   app added in India, day by day.
 - Genre and type from OMDb or TMDB; paired genres ("Action & Adventure") merged into one name.
 
+**Insight chip** (top bar, beside the date)
+- Today's change on your INDmoney portfolio (▲ ₹6,965 +0.05%), then Nifty 50, then Sensex, one at a time every 30 s.
+  OK opens the details: each class (mutual funds, Indian stocks, US stocks) with today's change and value, and both
+  indices with their previous close and quote time.
+- Read-only, from INDmoney's official MCP server, by the TV itself: you sign in once on the computer and hand the
+  sign-in to the TV, which renews it on its own (the computer can stay off). Fetched every 15 minutes while India's
+  market is open, hourly otherwise; a missing figure is left out, never shown as zero.
+
 **Ambient News** (screensaver)
 - Now and then, a news story fills the screen between Google's screensaver wallpapers, full size: the photo, topic,
   publisher, headline, date and a QR code to read more on your phone. It never takes focus: Back closes the
@@ -65,6 +73,7 @@ screensaver stays.
  TMDB (new releases, popular, genres) ────────────┤
  JustWatch (new releases, when TMDB fails) ───────┤
  Google News / TheNewsAPI ─── Ambient News add-on → stories between the screensaver's wallpapers
+ INDmoney MCP (read-only) ──── Feed add-on → insight chip beside the date
  StreamRatings shared cache → OMDb (ratings) ─────┤
                                                   ▼
                                 Feed add-on (io.github.rohan9405.feed)
@@ -131,6 +140,9 @@ my-tv/api-keys.sh save omdb      # free key from omdbapi.com
 my-tv/api-keys.sh save tmdb      # TMDB API Read Access Token, free at themoviedb.org
 my-tv/api-keys.sh save news      # optional: TheNewsAPI token, free at thenewsapi.com, for Ambient News
 my-tv/api-keys.sh send
+# 4. Optional, the insight chip: sign in to INDmoney once (its own page, read-only), then hand it to the TV.
+python3 my-tv/indmoney-signin.py
+my-tv/indmoney-pair.sh
 ```
 
 On Google TV, the stock launcher keeps the Home button while it is enabled. [my-tv/README.md](my-tv/README.md) has

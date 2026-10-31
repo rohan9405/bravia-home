@@ -165,6 +165,14 @@ public final class FeedActivity extends Activity {
             Tmdb.setToken(this, t);
             setup = true;
         }
+        String client = intent.getStringExtra("indmoney_client_id");
+        if (client != null) {
+            // A sign-in made on the computer (my-tv/indmoney-pair.sh); the TV renews it from here on.
+            Indmoney.pair(this, client, String.valueOf(intent.getStringExtra("indmoney_client_secret")),
+                    String.valueOf(intent.getStringExtra("indmoney_refresh_token")));
+            Insights.kick(this);
+            setup = true;
+        }
         if (intent.hasExtra("demo")) {
             Demo.set(this, intent.getBooleanExtra("demo", false));
             setup = true;

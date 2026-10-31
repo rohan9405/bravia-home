@@ -198,6 +198,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** feed_package: the poster home (FeedHome) in place of the dock and grid; null when off. */
     private Feed feed;
     private FeedHome feedHome;
+    /** The INDmoney portfolio and markets chip beside the date, with the feed Home. */
+    private InsightCard insightCard;
     private List<String> feedDock;
     private List<String> feedHidden;
     private View raceBar;
@@ -874,6 +876,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             int firstButton = btnInputs.getVisibility() == View.VISIBLE ? R.id.btnInputs : firstTopButton().getId();
             int leftButton = rtlMenuBar ? R.id.btnSettings : firstButton;
             int rightButton = rtlMenuBar ? firstButton : R.id.btnSettings;
+            if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && v.getId() == leftButton && insightCard != null && insightCard.focusable()) {
+                insightCard.focus();   // the insight chip beside the date
+                return true;
+            }
             if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) return v.getId() == leftButton;
             return keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && v.getId() == rightButton;
         };
@@ -2562,6 +2568,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         box.post(() -> feedHome.focusDrawer());
         View bluetooth = findViewById(R.id.btnBluetooth);
         bluetooth.setVisibility(View.VISIBLE);
+        // The insight chip after the date, which then keeps to its own width.
+        View dateColumn = (View) findViewById(R.id.date).getParent();
+        LinearLayout.LayoutParams dl = (LinearLayout.LayoutParams) dateColumn.getLayoutParams();
+        dl.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+        dl.weight = 0;
+        dateColumn.setLayoutParams(dl);
+        insightCard = new InsightCard(this, handler, (LinearLayout) findViewById(R.id.clock).getParent(),
+                () -> (btnInputs.getVisibility() == View.VISIBLE ? btnInputs : firstTopButton()).requestFocus(),
+                () -> feedHome.focusTop());
+        feed.setInsightsListener(insightCard::update);
         // Liquid glass over a faint dark base on the top bar's buttons: the header's art behind them can be bright.
         for (int id : new int[] {R.id.btnInputs, R.id.btnWifi, R.id.btnBluetooth, R.id.btnSettings}) {
             findViewById(id).setBackgroundResource(R.drawable.pill_bg_feed);

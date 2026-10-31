@@ -49,6 +49,11 @@ public final class FeedProvider extends ContentProvider {
         return c;
     }
 
+    /** Home's insight card: the INDmoney portfolio's day and the indices, as one JSON row. */
+    static Uri insightsUri() {
+        return new Uri.Builder().scheme(ContentResolver.SCHEME_CONTENT).authority(AUTHORITY).appendPath("insights").build();
+    }
+
     static Uri imageUri(String name) {
         return new Uri.Builder().scheme(ContentResolver.SCHEME_CONTENT).authority(AUTHORITY)
                 .appendPath("image").appendPath(name).build();
@@ -69,6 +74,13 @@ public final class FeedProvider extends ContentProvider {
             return c;
         }
         if ("details".equals(uri.getLastPathSegment())) return details(uri.getQueryParameter("tmdb"));
+        if ("insights".equals(uri.getLastPathSegment())) {
+            Insights.refreshIfStale(getContext());
+            MatrixCursor c = new MatrixCursor(new String[] {"json"});
+            c.addRow(new Object[] {Insights.json(getContext())});
+            c.setNotificationUri(getContext().getContentResolver(), insightsUri());
+            return c;
+        }
         if (!"items".equals(uri.getLastPathSegment())) return null;
         Store.Snapshot s = Store.get(getContext());
         // Home sends its drawer apps: TMDB is asked about those only, and straight away for one just added.
